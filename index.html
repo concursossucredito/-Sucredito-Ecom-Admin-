@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Admin · Sucrédito</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23E30F1C'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 19l13 13-13 13'/%3E%3Cpath d='M33 19l13 13-13 13'/%3E%3C/g%3E%3C/svg%3E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;background:#f4f5f7;color:#171717}
+header{background:#ffee00;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;font-weight:800;position:sticky;top:0;z-index:5}
+main{max-width:1150px;margin:auto;padding:16px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tabs button,.btn{border:0;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;background:#fff;color:#171717;border:1px solid #ddd}
+.tabs button.on,.btn.red{background:#e30f1c;color:#fff;border-color:#e30f1c}.btn.dark{background:#171717;color:#fff}
+.card{background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:14px}
+input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font:inherit}
+.wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap}th{background:#fafafa}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}.bar input{flex:1;min-width:180px}
+dialog{border:0;border-radius:14px;max-width:640px;width:94%;padding:18px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:10px}.g label{font-size:12px;font-weight:700}.full{grid-column:1/-1}
+.ok{color:#0a7d33}.no{color:#c00}.muted{color:#666;font-size:13px}pre{white-space:pre-wrap;margin:0}
+#login{max-width:340px;margin:12vh auto}#app{display:none}.sec{display:none}.sec.on{display:block}
+@media(max-width:600px){.g{grid-template-columns:1fr}}
+</style></head><body>
+<header><span>Sucrédito · Admin de productos</span><span><span id="who" class="muted"></span> <button class="btn" id="out" style="display:none">Salir</button></span></header>
+<main>
+<div id="login" class="card"><h3>Ingresar</h3><p class="muted">Email y clave de administrador</p>
+<input type="email" id="em" autocomplete="username" placeholder="email" style="margin-bottom:8px">
+<input type="password" id="pw" autocomplete="current-password" placeholder="clave"><p class="no" id="lerr"></p><button class="btn red" id="go">Entrar</button></div>
+<div id="app">
+<div class="tabs"><button data-t="prod" class="on">Productos</button><button data-t="imp">Importar Excel</button><button data-t="stk">Stock (comandos)</button><button data-t="his">Historial</button></div>
+
+<section class="sec on card" id="prod"><div class="bar"><input id="q" placeholder="Buscar por ID, marca, nombre..."><button class="btn red" id="new">+ Nuevo producto</button></div>
+<div class="wrap"><table><thead><tr><th>ID</th><th>Producto</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Activo</th><th></th></tr></thead><tbody id="rows"></tbody></table></div></section>
+
+<section class="sec card" id="imp"><h3>Carga masiva desde Excel</h3>
+<p class="muted">Columnas: id, categoria, marca, nombre, precio, cuotas, badge, imagen, spec1–spec4, stock, activo. Con "Actualizar/crear", las celdas vacías conservan el valor actual.</p>
+<div class="bar"><button class="btn" id="tpl">Descargar Excel actual / plantilla</button></div>
+<div class="g"><div><label>Archivo (.xlsx / .csv)</label><input type="file" id="file" accept=".xlsx,.xls,.csv"></div>
+<div><label>Modo</label><select id="modo"><option value="upsert">Actualizar / crear productos</option><option value="stock_set">Solo stock: fijar cantidad</option><option value="stock_add">Solo stock: sumar</option><option value="stock_sub">Solo stock: descontar</option></select></div></div>
+<p id="prev" class="muted"></p><button class="btn red" id="doimp" disabled>Importar</button><pre id="impout"></pre></section>
+
+<section class="sec card" id="stk"><h3>Control de stock por comandos</h3>
+<p class="muted">Un comando por línea: <b>descontar</b> ID cantidad · <b>sumar</b> ID cantidad · <b>ajustar</b> ID cantidad (fija el valor). Nota opcional al final.<br>Ej: <code>descontar samsung-a55 2 venta mostrador</code></p>
+<textarea id="cmd" rows="6" placeholder="descontar jbl-flip 1"></textarea><p><button class="btn red" id="run">Ejecutar</button></p><pre id="cout"></pre></section>
+
+<section class="sec card" id="his"><h3>Últimos movimientos de stock</h3><div class="wrap"><table><thead><tr><th>Fecha</th><th>ID</th><th>Tipo</th><th>Cant.</th><th>Stock final</th><th>Nota</th></tr></thead><tbody id="hrows"></tbody></table></div></section>
+</div></main>
+
+<dialog id="dlg"><form method="dialog" id="frm"><h3 id="dt"></h3><div class="g" id="fields"></div>
+<p class="no" id="ferr"></p><div class="bar" style="justify-content:space-between"><button type="button" class="btn" id="del">Eliminar</button><span><button type="button" class="btn" id="cancel">Cancelar</button> <button type="submit" class="btn red">Guardar</button></span></div></form></dialog>
+
+<script>
+const SB_URL="https://edrsmodtaalisaiqpeoa.supabase.co",SB_KEY="sb_publishable_UvLROmFBK3JzgyqoTPFLbQ_OlAo3yqc";
+const CATS=["celulares","parlantes","smartwatch","audio"];
+const COLS=['id','categoria','marca','nombre','precio','cuotas','badge','imagen','spec1','spec2','spec3','spec4','stock','activo'];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sb=supabase.createClient(SB_URL,SB_KEY);
+let DATA=[],IMP=[],ROL='';
+const flat=p=>{const o={...p};(p.specs||[]).forEach((x,i)=>o['spec'+(i+1)]=x);return o;};
+const toDb=o=>({id:String(o.id).trim(),categoria:String(o.categoria||'').toLowerCase(),marca:o.marca||'',nombre:o.nombre||'',
+  precio:Number(String(o.precio??'').replace(/[^\d]/g,''))||0,cuotas:String(o.cuotas??''),badge:o.badge||null,imagen:o.imagen||null,
+  specs:[o.spec1,o.spec2,o.spec3,o.spec4].filter(Boolean),stock:Math.max(0,parseInt(o.stock,10)||0),
+  activo:!(o.activo===false||/^(no|false|0)$/i.test(String(o.activo).trim()))});
+async function api(action,d={}){
+  if(action==='list'){const {data,error}=await sb.from('productos').select('*').order('nombre');if(error)throw error;return{rows:data.map(flat)};}
+  if(action==='save'){const {error}=await sb.from('productos').upsert(toDb(d.p));if(error)throw error;return{};}
+  if(action==='del'){const {error}=await sb.from('productos').delete().eq('id',d.id);if(error)throw error;return{};}
+  if(action==='stock'){const res=[];for(const o of d.ops){const {data,error}=await sb.rpc('mover_stock',{p_id:o.id,p_tipo:o.tipo,p_cant:o.cant,p_nota:o.nota||''});
+    res.push(error?{id:o.id,ok:false,msg:error.message}:{id:o.id,ok:true,msg:data});}return{res};}
+  if(action==='import'){
+    if(d.modo!=='upsert'){const t={stock_set:'ajustar',stock_add:'sumar',stock_sub:'descontar'}[d.modo];
+      return api('stock',{ops:d.rows.map(r=>({id:String(r.id).trim(),tipo:t,cant:parseInt(r.stock,10)||0,nota:'Excel'}))});}
+    const ex=Object.fromEntries(DATA.map(p=>[p.id,p]));let n=0,a=0;
+    const rows=d.rows.map(r=>{const id=String(r.id).trim(),e=ex[id];e?a++:n++;const m={};
+      COLS.forEach(c=>m[c]=((r[c]===undefined||r[c]==='')&&e)?e[c]:r[c]);m.id=id;return toDb(m);});
+    for(let i=0;i<rows.length;i+=200){const {error}=await sb.from('productos').upsert(rows.slice(i,i+200));if(error)throw error;}
+    return{nuevos:n,actualizados:a};}
+  if(action==='movs'){const {data,error}=await sb.from('movimientos').select('*').order('fecha',{ascending:false}).limit(200);if(error)throw error;
+    return{rows:data.map(m=>[m.fecha,m.producto_id,m.tipo,m.cantidad,m.stock_final,(m.nota||'')+(m.usuario?' · '+m.usuario:'')])};}
+}
+async function boot(){
+  const {data:{session}}=await sb.auth.getSession();if(!session)return;
+  const {data:adm}=await sb.from('admins').select('rol').eq('email',session.user.email).maybeSingle();
+  if(!adm){await sb.auth.signOut();throw new Error('Este usuario no tiene permiso de administración');}
+  ROL=adm.rol;DATA=(await api('list')).rows;
+  $('#login').style.display='none';$('#app').style.display='block';$('#out').style.display='';$('#who').textContent=session.user.email+' · '+ROL;draw();}
+$('#go').onclick=async()=>{$('#lerr').textContent='';
+  const {error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});
+  if(error)return $('#lerr').textContent='Email o clave incorrectos';
+  try{await boot();}catch(e){$('#lerr').textContent=e.message;}};
+$('#pw').onkeydown=e=>{if(e.key==='Enter')$('#go').click();};
+$('#out').onclick=async()=>{await sb.auth.signOut();location.reload();};
+boot().catch(()=>{});
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.sec').forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));
+  if(b.dataset.t==='his')hist();});
+const ok=v=>!(v===false||/^(no|false|0)$/i.test(String(v).trim()));
+function draw(){const q=$('#q').value.toLowerCase();
+  $('#rows').innerHTML=DATA.filter(p=>!q||[p.id,p.marca,p.nombre,p.categoria].join(' ').toLowerCase().includes(q)).map(p=>`<tr>
+  <td>${esc(p.id)}</td><td>${esc(p.marca)} ${esc(p.nombre)}</td><td>${esc(p.categoria)}</td><td>$ ${Number(p.precio||0).toLocaleString('es-AR')}</td>
+  <td class="${Number(p.stock)>0?'ok':'no'}"><b>${esc(p.stock)}</b></td><td>${ok(p.activo)?'Sí':'No'}</td>
+  <td><button class="btn" onclick="edit('${esc(p.id)}')">Editar</button></td></tr>`).join('')||'<tr><td colspan="7" class="muted">Sin productos</td></tr>';}
+$('#q').oninput=draw;
+const LBL={id:'ID (único)',categoria:'Categoría',marca:'Marca',nombre:'Nombre',precio:'Precio (número)',cuotas:'Cuotas (ej: 12)',badge:'Etiqueta (ej: Más vendido)',imagen:'URL de imagen',spec1:'Característica 1',spec2:'Característica 2',spec3:'Característica 3',spec4:'Característica 4',stock:'Stock'};
+function edit(id){const p=id?DATA.find(x=>x.id===id):{activo:true,stock:0,categoria:CATS[0]};
+  $('#dt').textContent=id?'Editar producto':'Nuevo producto';$('#ferr').textContent='';$('#del').style.display=(id&&ROL==='admin')?'':'none';
+  $('#fields').innerHTML=Object.keys(LBL).map(k=>`<div class="${k==='imagen'?'full':''}"><label>${LBL[k]}</label>`+(k==='categoria'
+    ?`<select name="${k}">${CATS.map(c=>`<option ${p[k]===c?'selected':''}>${c}</option>`).join('')}</select>`
+    :`<input name="${k}" value="${esc(p[k])}" ${k==='id'&&id?'readonly':''}>`)+'</div>').join('')
+    +`<div class="full"><label><input type="checkbox" name="activo" style="width:auto" ${ok(p.activo)?'checked':''}> Visible en la tienda</label></div>`;
+  $('#dlg').showModal();
+  const im=$('#fields [name=imagen]');if(im){const u=document.createElement('input');u.type='file';u.accept='image/*';u.style.marginTop='6px';im.after(u);
+    u.onchange=async()=>{const f=u.files[0];if(!f)return;const path=Date.now()+'-'+f.name.replace(/[^\w.]+/g,'_');
+      const {error}=await sb.storage.from('productos').upload(path,f);if(error)return $('#ferr').textContent=error.message;
+      im.value=sb.storage.from('productos').getPublicUrl(path).data.publicUrl;};}}
+$('#new').onclick=()=>edit('');$('#cancel').onclick=()=>$('#dlg').close();
+$('#frm').onsubmit=async e=>{e.preventDefault();const f=new FormData($('#frm')),p={};
+  Object.keys(LBL).forEach(k=>p[k]=f.get(k));p.activo=!!f.get('activo');
+  if(!p.id.trim())return $('#ferr').textContent='Falta el ID';
+  try{await api('save',{p});DATA=(await api('list')).rows;draw();$('#dlg').close();}catch(x){$('#ferr').textContent=x.message;}};
+$('#del').onclick=async()=>{const id=$('#fields [name=id]').value;if(!confirm('¿Eliminar '+id+'? No se puede deshacer.'))return;
+  try{await api('del',{id});DATA=(await api('list')).rows;draw();$('#dlg').close();}catch(x){$('#ferr').textContent=x.message;}};
+$('#tpl').onclick=()=>{const ws=XLSX.utils.json_to_sheet(DATA.length?DATA:[Object.fromEntries(COLS.map(c=>[c,'']))],{header:COLS});
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Productos');XLSX.writeFile(wb,'productos.xlsx');};
+const nk=k=>String(k).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+$('#file').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  const wb=XLSX.read(await f.arrayBuffer());const raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+  IMP=raw.map(r=>{const o={};for(const k in r)o[nk(k)]=r[k];
+    if(o.specs&&!o.spec1)String(o.specs).split('|').slice(0,4).forEach((s,i)=>o['spec'+(i+1)]=s.trim());return o;});
+  const bad=IMP.filter(r=>!String(r.id).trim()).length;IMP=IMP.filter(r=>String(r.id).trim());
+  const unk=[...new Set(IMP.map(r=>r.categoria).filter(c=>c&&!CATS.includes(String(c).toLowerCase())))];
+  $('#prev').innerHTML=`${IMP.length} filas listas${bad?` · <span class="no">${bad} sin ID (se omiten)</span>`:''}${unk.length?` · <span class="no">Categorías nuevas que la tienda aún no muestra: ${esc(unk.join(', '))}</span>`:''}`;
+  $('#doimp').disabled=!IMP.length;};
+$('#doimp').onclick=async()=>{const modo=$('#modo').value;if(!confirm(`Importar ${IMP.length} filas (${$('#modo').selectedOptions[0].text})?`))return;
+  $('#doimp').disabled=true;$('#impout').textContent='Procesando...';
+  try{const j=await api('import',{rows:IMP,modo});
+    $('#impout').textContent=j.res?j.res.map(r=>`${r.ok?'✔':'✖'} ${r.id}: ${r.msg}`).join('\n'):`Listo: ${j.nuevos} nuevos · ${j.actualizados} actualizados`;
+    DATA=(await api('list')).rows;draw();}catch(x){$('#impout').textContent='Error: '+x.message;}$('#doimp').disabled=false;};
+$('#run').onclick=async()=>{const lines=$('#cmd').value.split('\n').map(l=>l.trim()).filter(Boolean),ops=[],out=[];
+  lines.forEach(l=>{const m=l.match(/^(descontar|restar|sumar|agregar|ajustar|fijar)\s+(\S+)\s+(\d+)(?:\s+(.*))?$/i);
+    if(!m)return out.push('✖ No entendí: '+l);const k=m[1].toLowerCase();
+    ops.push({id:m[2],tipo:/^(descontar|restar)$/.test(k)?'descontar':/^(sumar|agregar)$/.test(k)?'sumar':'ajustar',cant:+m[3],nota:m[4]||'Consola'});});
+  try{if(ops.length){const j=await api('stock',{ops});j.res.forEach(r=>out.push(`${r.ok?'✔':'✖'} ${r.id}: ${r.msg}`));DATA=(await api('list')).rows;draw();}}catch(x){out.push('Error: '+x.message);}
+  $('#cout').textContent=out.join('\n');};
+async function hist(){try{const j=await api('movs');$('#hrows').innerHTML=j.rows.map(r=>`<tr>${[new Date(r[0]).toLocaleString('es-AR'),r[1],r[2],r[3],r[4],r[5]].map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="6" class="muted">Sin movimientos</td></tr>';}catch(x){$('#hrows').innerHTML=`<tr><td colspan="6" class="no">${esc(x.message)}</td></tr>`;}}
+</script></body></html>

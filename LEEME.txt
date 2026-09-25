@@ -1,0 +1,9 @@
+ADMIN SUCRÉDITO (web separada) — puesta en marcha
+1) Crear un proyecto gratis en supabase.com.
+2) SQL Editor: pegar supabase.sql (con tu email en la última línea) y ejecutar.
+3) Authentication > Users > Add user: mismo email + una clave. En Authentication > Sign In / Providers, desactivar "Allow new users to sign up".
+4) Project Settings > API: copiar "Project URL" y "anon public key". Pegarlos en SB_URL y SB_KEY de admin/index.html y en el index.html de la tienda.
+   (La anon key es pública por diseño; la seguridad la dan las reglas del SQL.)
+5) Subir esta carpeta a un repositorio propio en GitHub Pages (queda separada de la tienda).
+6) Entrar, "Descargar Excel actual / plantilla", cargar productos e importar.
+Más usuarios: crearlos en Authentication y sumar su email en la tabla admins (rol 'admin' puede borrar; 'editor' no).
