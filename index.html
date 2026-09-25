@@ -1,149 +1,74 @@
 <!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><title>Admin · Sucrédito</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23E30F1C'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 19l13 13-13 13'/%3E%3Cpath d='M33 19l13 13-13 13'/%3E%3C/g%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-*{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;background:#f4f5f7;color:#171717}
-header{background:#ffee00;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;font-weight:800;position:sticky;top:0;z-index:5}
-main{max-width:1150px;margin:auto;padding:16px}
-.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
-.tabs button,.btn{border:0;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;background:#fff;color:#171717;border:1px solid #ddd}
-.tabs button.on,.btn.red{background:#e30f1c;color:#fff;border-color:#e30f1c}.btn.dark{background:#171717;color:#fff}
-.card{background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:14px}
-input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font:inherit}
-.wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap}th{background:#fafafa}
-.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}.bar input{flex:1;min-width:180px}
-dialog{border:0;border-radius:14px;max-width:640px;width:94%;padding:18px}
-.g{display:grid;grid-template-columns:1fr 1fr;gap:10px}.g label{font-size:12px;font-weight:700}.full{grid-column:1/-1}
-.ok{color:#0a7d33}.no{color:#c00}.muted{color:#666;font-size:13px}pre{white-space:pre-wrap;margin:0}
-#login{max-width:340px;margin:12vh auto}#app{display:none}.sec{display:none}.sec.on{display:block}
-@media(max-width:600px){.g{grid-template-columns:1fr}}
-</style></head><body>
-<header><span>Sucrédito · Admin de productos</span><span><span id="who" class="muted"></span> <button class="btn" id="out" style="display:none">Salir</button></span></header>
+*{box-sizing:border-box}body{margin:0;font:15px Inter,system-ui,sans-serif;background:#f4f5f7;color:#171717}header{background:#ffee00;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;font-weight:800;position:sticky;top:0;z-index:20}.brand{display:flex;align-items:center;gap:10px}.brand img{height:38px;width:auto;border-radius:7px}.status{display:flex;gap:8px;align-items:center}.pill{padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #ddd;font-size:12px}.pill.draft{background:#fff7cc;border-color:#e8d800}.pill.published{background:#e9f8ef;border-color:#9bd6ae}.pill.warn{background:#fff0f0;border-color:#ffb7b7}.btn{border:1px solid #ddd;border-radius:10px;padding:10px 15px;font-weight:750;cursor:pointer;background:#fff;color:#171717}.btn.red{background:#e30f1c;color:#fff;border-color:#e30f1c}.btn.dark{background:#171717;color:#fff}.btn.yellow{background:#ffee00;border-color:#e8d800}.btn.small{padding:7px 10px;font-size:13px}.btn:disabled{opacity:.45;cursor:not-allowed}main{max-width:1180px;margin:auto;padding:16px}.tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}.tabs button.on{background:#171717;color:#fff;border-color:#171717}.card{background:#fff;border-radius:15px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:14px}.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}.bar input{flex:1;min-width:220px}input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font:inherit}.wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:9px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap}th{background:#fafafa}.muted{color:#666;font-size:13px}.ok{color:#087d34}.no{color:#c00}.sec{display:none}.sec.on{display:block}.g{display:grid;grid-template-columns:1fr 1fr;gap:10px}.g label{font-size:12px;font-weight:750}.full{grid-column:1/-1}.stock-edit{display:flex;align-items:center;gap:5px}.stock-edit button{width:30px;height:30px;padding:0}.stock-number{min-width:35px;text-align:center;font-weight:800}.actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.empty{padding:30px;text-align:center;color:#777}.notice{padding:11px 13px;border-radius:10px;background:#fff8d7;border:1px solid #eadb73;margin-bottom:12px}.preview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.preview-card{border:1px solid #eee;border-radius:14px;overflow:hidden;background:#fff}.preview-card img{width:100%;height:150px;object-fit:cover;background:#f4f4f4}.preview-card .pc{padding:12px}.preview-card .installment{font-size:17px;font-weight:850}.preview-card .brand{font-size:11px;font-weight:800;letter-spacing:.08em;color:#777}.cat-row{display:grid;grid-template-columns:1fr 100px 100px 100px;gap:8px;align-items:center}.cat-row+.cat-row{margin-top:8px}.cat-head{font-size:12px;font-weight:800;color:#777;margin-bottom:7px}.tag{display:inline-block;padding:4px 8px;border-radius:999px;background:#f1f1f1;font-size:12px}.hint{font-size:12px;color:#777;margin-top:5px}dialog{border:0;border-radius:16px;max-width:820px;width:95%;padding:0;box-shadow:0 20px 70px rgba(0,0,0,.22)}dialog::backdrop{background:rgba(0,0,0,.45)}.dlg-inner{padding:20px;max-height:88vh;overflow:auto}.dlg-actions{display:flex;justify-content:space-between;gap:8px;margin-top:18px}.feature-box{border:1px solid #eee;border-radius:12px;padding:12px}.feature-box h4{margin:0 0 9px}.preview-toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}@media(max-width:700px){.g,.preview-grid{grid-template-columns:1fr}.cat-row{grid-template-columns:1fr 70px 90px 90px}.status .who{display:none}header{gap:8px}.tabs{overflow:auto;flex-wrap:nowrap}.tabs button{white-space:nowrap}}
+</style>
+</head>
+<body>
+<header><div class="brand"><img src="https://concursossucredito.github.io/-Sucredito-Ecom-/assets/logo-sucredito.png" alt="Sucrédito"><span>Administrador</span></div><div class="status"><span id="state" class="pill">Sin cambios</span><span id="who" class="who muted"></span><button class="btn small" id="out" style="display:none">Salir</button></div></header>
 <main>
-<div id="login" class="card"><h3>Ingresar</h3><p class="muted">Email y clave de administrador</p>
-<input type="email" id="em" autocomplete="username" placeholder="email" style="margin-bottom:8px">
-<input type="password" id="pw" autocomplete="current-password" placeholder="clave"><p class="no" id="lerr"></p><button class="btn red" id="go">Entrar</button></div>
-<div id="app">
-<div class="tabs"><button data-t="prod" class="on">Productos</button><button data-t="imp">Importar Excel</button><button data-t="stk">Stock (comandos)</button><button data-t="his">Historial</button></div>
+<div id="login" class="card" style="max-width:360px;margin:12vh auto"><h3>Ingresar</h3><p class="muted">Email y clave de administrador</p><input type="email" id="em" autocomplete="username" placeholder="email" style="margin-bottom:8px"><input type="password" id="pw" autocomplete="current-password" placeholder="clave"><p class="no" id="lerr"></p><button class="btn red" id="go">Entrar</button></div>
+<div id="app" style="display:none">
+  <div class="card notice"><b>Modo borrador.</b> Los cambios que hagas acá no aparecen en la página pública hasta presionar <b>Publicar cambios</b>. Podés revisar todo antes desde Vista previa.</div>
+  <div class="bar"><button class="btn" id="preview">Vista previa</button><button class="btn" id="discard">Descartar cambios</button><button class="btn red" id="publish">Publicar cambios</button></div>
+  <div class="tabs"><button data-t="prod" class="on btn">Productos</button><button data-t="cats" class="btn">Categorías</button><button data-t="imp" class="btn">Importar Excel</button><button data-t="his" class="btn">Historial</button></div>
 
-<section class="sec on card" id="prod"><div class="bar"><input id="q" placeholder="Buscar por ID, marca, nombre..."><button class="btn red" id="new">+ Nuevo producto</button></div>
-<div class="wrap"><table><thead><tr><th>ID</th><th>Producto</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Activo</th><th></th></tr></thead><tbody id="rows"></tbody></table></div></section>
+  <section class="sec on card" id="prod"><div class="bar"><input id="q" placeholder="Buscar por ID, marca, nombre o categoría..."><button class="btn red" id="new">+ Nuevo producto</button></div><div class="wrap"><table><thead><tr><th>ID</th><th>Producto</th><th>Categoría</th><th>Cuotas</th><th>Stock</th><th>Visible</th><th></th></tr></thead><tbody id="rows"></tbody></table></div></section>
 
-<section class="sec card" id="imp"><h3>Carga masiva desde Excel</h3>
-<p class="muted">Columnas: id, categoria, marca, nombre, precio, cuotas, badge, imagen, spec1–spec4, stock, activo. Con "Actualizar/crear", las celdas vacías conservan el valor actual.</p>
-<div class="bar"><button class="btn" id="tpl">Descargar Excel actual / plantilla</button></div>
-<div class="g"><div><label>Archivo (.xlsx / .csv)</label><input type="file" id="file" accept=".xlsx,.xls,.csv"></div>
-<div><label>Modo</label><select id="modo"><option value="upsert">Actualizar / crear productos</option><option value="stock_set">Solo stock: fijar cantidad</option><option value="stock_add">Solo stock: sumar</option><option value="stock_sub">Solo stock: descontar</option></select></div></div>
-<p id="prev" class="muted"></p><button class="btn red" id="doimp" disabled>Importar</button><pre id="impout"></pre></section>
+  <section class="sec card" id="cats"><div class="bar"><div><h3 style="margin:0">Categorías</h3><div class="muted">Las categorías activas aparecen en el catálogo cuando publicás.</div></div><button class="btn red" id="newCat">+ Nueva categoría</button></div><div class="cat-head cat-row"><span>Nombre</span><span>Orden</span><span>Activa</span><span></span></div><div id="catRows"></div></section>
 
-<section class="sec card" id="stk"><h3>Control de stock por comandos</h3>
-<p class="muted">Un comando por línea: <b>descontar</b> ID cantidad · <b>sumar</b> ID cantidad · <b>ajustar</b> ID cantidad (fija el valor). Nota opcional al final.<br>Ej: <code>descontar samsung-a55 2 venta mostrador</code></p>
-<textarea id="cmd" rows="6" placeholder="descontar jbl-flip 1"></textarea><p><button class="btn red" id="run">Ejecutar</button></p><pre id="cout"></pre></section>
+  <section class="sec card" id="imp"><h3>Carga masiva desde Excel</h3><p class="muted">Una sola acción: <b>agregar o actualizar productos en el borrador</b>. No modifica directamente la página pública.</p><p class="muted">Columnas: id, categoria, marca, nombre, precio, cuotas, valor_cuota, badge, imagen, spec1–spec5, extra1_label, extra1_value, extra2_label, extra2_value, stock, activo.</p><div class="bar"><button class="btn" id="tpl">Descargar Excel actual / plantilla</button></div><div><label style="font-size:12px;font-weight:750">Archivo (.xlsx / .csv)</label><input type="file" id="file" accept=".xlsx,.xls,.csv"></div><p id="prev" class="muted"></p><button class="btn red" id="doimp" disabled>Agregar / actualizar productos</button><pre id="impout"></pre></section>
 
-<section class="sec card" id="his"><h3>Últimos movimientos de stock</h3><div class="wrap"><table><thead><tr><th>Fecha</th><th>ID</th><th>Tipo</th><th>Cant.</th><th>Stock final</th><th>Nota</th></tr></thead><tbody id="hrows"></tbody></table></div></section>
+  <section class="sec card" id="his"><h3>Últimos movimientos de stock</h3><div class="wrap"><table><thead><tr><th>Fecha</th><th>ID</th><th>Tipo</th><th>Cant.</th><th>Stock final</th><th>Nota</th></tr></thead><tbody id="hrows"></tbody></table></div></section>
 </div></main>
 
-<dialog id="dlg"><form method="dialog" id="frm"><h3 id="dt"></h3><div class="g" id="fields"></div>
-<p class="no" id="ferr"></p><div class="bar" style="justify-content:space-between"><button type="button" class="btn" id="del">Eliminar</button><span><button type="button" class="btn" id="cancel">Cancelar</button> <button type="submit" class="btn red">Guardar</button></span></div></form></dialog>
+<dialog id="dlg"><form method="dialog" id="frm"><div class="dlg-inner"><h3 id="dt"></h3><div class="g" id="fields"></div><p class="no" id="ferr"></p><div class="dlg-actions"><button type="button" class="btn" id="del">Eliminar</button><span><button type="button" class="btn" id="cancel">Cancelar</button> <button type="submit" class="btn red">Guardar borrador</button></span></div></div></form></dialog>
+<dialog id="catDlg"><form method="dialog" id="catFrm"><div class="dlg-inner"><h3 id="catDt">Nueva categoría</h3><div class="g"><div><label>Nombre</label><input id="catName" required></div><div><label>Orden</label><input id="catOrder" type="number" value="0"></div></div><p class="no" id="catErr"></p><div class="dlg-actions"><button type="button" class="btn" id="catDel">Eliminar</button><span><button type="button" class="btn" id="catCancel">Cancelar</button> <button type="submit" class="btn red">Guardar borrador</button></span></div></div></form></dialog>
+<dialog id="previewDlg"><div class="dlg-inner"><div class="preview-toolbar"><div><h3 style="margin:0">Vista previa del catálogo</h3><div class="muted">Así quedaría el contenido que vas a publicar.</div></div><button class="btn" onclick="document.getElementById('previewDlg').close()">Cerrar</button></div><div id="previewContent"></div></div></dialog>
 
 <script>
 const SB_URL="https://edrsmodtaalisaiqpeoa.supabase.co",SB_KEY="sb_publishable_UvLROmFBK3JzgyqoTPFLbQ_OlAo3yqc";
-const CATS=["celulares","parlantes","smartwatch","audio"];
-const COLS=['id','categoria','marca','nombre','precio','cuotas','badge','imagen','spec1','spec2','spec3','spec4','stock','activo'];
-const $=s=>document.querySelector(s);
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const sb=supabase.createClient(SB_URL,SB_KEY);
-let DATA=[],IMP=[],ROL='';
-const flat=p=>{const o={...p};(p.specs||[]).forEach((x,i)=>o['spec'+(i+1)]=x);return o;};
-const toDb=o=>({id:String(o.id).trim(),categoria:String(o.categoria||'').toLowerCase(),marca:o.marca||'',nombre:o.nombre||'',
-  precio:Number(String(o.precio??'').replace(/[^\d]/g,''))||0,cuotas:String(o.cuotas??''),badge:o.badge||null,imagen:o.imagen||null,
-  specs:[o.spec1,o.spec2,o.spec3,o.spec4].filter(Boolean),stock:Math.max(0,parseInt(o.stock,10)||0),
-  activo:!(o.activo===false||/^(no|false|0)$/i.test(String(o.activo).trim()))});
-async function api(action,d={}){
-  if(action==='list'){const {data,error}=await sb.from('productos').select('*').order('nombre');if(error)throw error;return{rows:data.map(flat)};}
-  if(action==='save'){const {error}=await sb.from('productos').upsert(toDb(d.p));if(error)throw error;return{};}
-  if(action==='del'){const {error}=await sb.from('productos').delete().eq('id',d.id);if(error)throw error;return{};}
-  if(action==='stock'){const res=[];for(const o of d.ops){const {data,error}=await sb.rpc('mover_stock',{p_id:o.id,p_tipo:o.tipo,p_cant:o.cant,p_nota:o.nota||''});
-    res.push(error?{id:o.id,ok:false,msg:error.message}:{id:o.id,ok:true,msg:data});}return{res};}
-  if(action==='import'){
-    if(d.modo!=='upsert'){const t={stock_set:'ajustar',stock_add:'sumar',stock_sub:'descontar'}[d.modo];
-      return api('stock',{ops:d.rows.map(r=>({id:String(r.id).trim(),tipo:t,cant:parseInt(r.stock,10)||0,nota:'Excel'}))});}
-    const ex=Object.fromEntries(DATA.map(p=>[p.id,p]));let n=0,a=0;
-    const rows=d.rows.map(r=>{const id=String(r.id).trim(),e=ex[id];e?a++:n++;const m={};
-      COLS.forEach(c=>m[c]=((r[c]===undefined||r[c]==='')&&e)?e[c]:r[c]);m.id=id;return toDb(m);});
-    for(let i=0;i<rows.length;i+=200){const {error}=await sb.from('productos').upsert(rows.slice(i,i+200));if(error)throw error;}
-    return{nuevos:n,actualizados:a};}
-  if(action==='movs'){const {data,error}=await sb.from('movimientos').select('*').order('fecha',{ascending:false}).limit(200);if(error)throw error;
-    return{rows:data.map(m=>[m.fecha,m.producto_id,m.tipo,m.cantidad,m.stock_final,(m.nota||'')+(m.usuario?' · '+m.usuario:'')])};}
-}
-async function boot(){
-  const {data:{session}}=await sb.auth.getSession();if(!session)return;
-  const {data:adm}=await sb.from('admins').select('rol').eq('email',session.user.email).maybeSingle();
-  if(!adm){await sb.auth.signOut();throw new Error('Este usuario no tiene permiso de administración');}
-  ROL=adm.rol;DATA=(await api('list')).rows;
-  $('#login').style.display='none';$('#app').style.display='block';$('#out').style.display='';$('#who').textContent=session.user.email+' · '+ROL;draw();}
-$('#go').onclick=async()=>{$('#lerr').textContent='';
-  const {error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});
-  if(error)return $('#lerr').textContent='Email o clave incorrectos';
-  try{await boot();}catch(e){$('#lerr').textContent=e.message;}};
-$('#pw').onkeydown=e=>{if(e.key==='Enter')$('#go').click();};
-$('#out').onclick=async()=>{await sb.auth.signOut();location.reload();};
-boot().catch(()=>{});
-document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
-  document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));
-  document.querySelectorAll('.sec').forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));
-  if(b.dataset.t==='his')hist();});
-const ok=v=>!(v===false||/^(no|false|0)$/i.test(String(v).trim()));
-function draw(){const q=$('#q').value.toLowerCase();
-  $('#rows').innerHTML=DATA.filter(p=>!q||[p.id,p.marca,p.nombre,p.categoria].join(' ').toLowerCase().includes(q)).map(p=>`<tr>
-  <td>${esc(p.id)}</td><td>${esc(p.marca)} ${esc(p.nombre)}</td><td>${esc(p.categoria)}</td><td>$ ${Number(p.precio||0).toLocaleString('es-AR')}</td>
-  <td class="${Number(p.stock)>0?'ok':'no'}"><b>${esc(p.stock)}</b></td><td>${ok(p.activo)?'Sí':'No'}</td>
-  <td><button class="btn" onclick="edit('${esc(p.id)}')">Editar</button></td></tr>`).join('')||'<tr><td colspan="7" class="muted">Sin productos</td></tr>';}
+const sb=supabase.createClient(SB_URL,SB_KEY);const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let DATA=[],CATS=[],IMP=[],ROL='',EDIT_CAT_ID='';
+const money=n=>Number(n||0).toLocaleString('es-AR');
+const slugify=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const active=v=>!(v===false||/^(no|false|0)$/i.test(String(v).trim()));
+const toDraft=p=>({id:String(p.id||'').trim(),categoria:String(p.categoria||''),marca:p.marca||'',nombre:p.nombre||'',precio:Number(p.precio||0),cuotas:Number(p.cuotas||0),valor_cuota:Number(p.valor_cuota||0),badge:p.badge||'',imagen:p.imagen||'',spec1:p.spec1||'',spec2:p.spec2||'',spec3:p.spec3||'',spec4:p.spec4||'',spec5:p.spec5||'',extra1_label:p.extra1_label||'',extra1_value:p.extra1_value||'',extra2_label:p.extra2_label||'',extra2_value:p.extra2_value||'',stock:Number(p.stock||0),activo:active(p.activo)});
+async function rpc(name,args={}){const {data,error}=await sb.rpc(name,args);if(error)throw error;return data;}
+async function load(){await rpc('preparar_borrador');let a=await sb.from('productos_borrador').select('*').order('nombre');if(a.error)throw a.error;DATA=a.data||[];let c=await sb.from('categorias_borrador').select('*').order('orden').order('nombre');if(c.error)throw c.error;CATS=c.data||[];draw();drawCats();updateState();}
+async function boot(){const {data:{session}}=await sb.auth.getSession();if(!session)return;const {data:adm}=await sb.from('admins').select('rol').eq('email',session.user.email).maybeSingle();if(!adm){await sb.auth.signOut();throw Error('Este usuario no tiene permiso de administración');}ROL=adm.rol;$('#login').style.display='none';$('#app').style.display='block';$('#out').style.display='';$('#who').textContent=session.user.email+' · '+ROL;await load();}
+$('#go').onclick=async()=>{$('#lerr').textContent='';const {error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});if(error)return $('#lerr').textContent='Email o clave incorrectos';try{await boot()}catch(e){$('#lerr').textContent=e.message}};
+$('#pw').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};$('#out').onclick=async()=>{await sb.auth.signOut();location.reload()};boot().catch(()=>{});
+function updateState(){const st=$('#state');st.textContent='BORRADOR';st.className='pill draft';}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.sec').forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));if(b.dataset.t==='his')hist()});
+function draw(){const q=$('#q').value.toLowerCase();const list=DATA.filter(p=>!q||[p.id,p.marca,p.nombre,p.categoria].join(' ').toLowerCase().includes(q));$('#rows').innerHTML=list.map(p=>`<tr><td>${esc(p.id)}</td><td>${esc(p.marca)} ${esc(p.nombre)}</td><td>${esc(p.categoria)}</td><td><b>${p.cuotas?esc(p.cuotas)+' cuotas':'-'}</b>${p.valor_cuota?' de $ '+money(p.valor_cuota):''}</td><td><div class="stock-edit"><button class="btn small" onclick="moveStock('${esc(p.id)}','descontar')">−</button><span class="stock-number ${p.stock>0?'ok':'no'}">${p.stock}</span><button class="btn small" onclick="moveStock('${esc(p.id)}','sumar')">+</button><button class="btn small" onclick="editStock('${esc(p.id)}')">Editar</button></div></td><td>${active(p.activo)?'Sí':'No'}</td><td><button class="btn small" onclick="edit('${esc(p.id)}')">Editar</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">Sin productos en el borrador</td></tr>';}
 $('#q').oninput=draw;
-const LBL={id:'ID (único)',categoria:'Categoría',marca:'Marca',nombre:'Nombre',precio:'Precio (número)',cuotas:'Cuotas (ej: 12)',badge:'Etiqueta (ej: Más vendido)',imagen:'URL de imagen',spec1:'Característica 1',spec2:'Característica 2',spec3:'Característica 3',spec4:'Característica 4',stock:'Stock'};
-function edit(id){const p=id?DATA.find(x=>x.id===id):{activo:true,stock:0,categoria:CATS[0]};
-  $('#dt').textContent=id?'Editar producto':'Nuevo producto';$('#ferr').textContent='';$('#del').style.display=(id&&ROL==='admin')?'':'none';
-  $('#fields').innerHTML=Object.keys(LBL).map(k=>`<div class="${k==='imagen'?'full':''}"><label>${LBL[k]}</label>`+(k==='categoria'
-    ?`<select name="${k}">${CATS.map(c=>`<option ${p[k]===c?'selected':''}>${c}</option>`).join('')}</select>`
-    :`<input name="${k}" value="${esc(p[k])}" ${k==='id'&&id?'readonly':''}>`)+'</div>').join('')
-    +`<div class="full"><label><input type="checkbox" name="activo" style="width:auto" ${ok(p.activo)?'checked':''}> Visible en la tienda</label></div>`;
-  $('#dlg').showModal();
-  const im=$('#fields [name=imagen]');if(im){const u=document.createElement('input');u.type='file';u.accept='image/*';u.style.marginTop='6px';im.after(u);
-    u.onchange=async()=>{const f=u.files[0];if(!f)return;const path=Date.now()+'-'+f.name.replace(/[^\w.]+/g,'_');
-      const {error}=await sb.storage.from('productos').upload(path,f);if(error)return $('#ferr').textContent=error.message;
-      im.value=sb.storage.from('productos').getPublicUrl(path).data.publicUrl;};}}
+const LBL={id:'ID único',categoria:'Categoría',marca:'Marca',nombre:'Nombre',precio:'Precio total (opcional)',cuotas:'Cantidad de cuotas',valor_cuota:'Valor de cada cuota',badge:'Etiqueta (opcional)',imagen:'URL de imagen'};
+function catOptions(selected){return '<option value="">Sin categoría</option>'+CATS.map(c=>`<option value="${esc(c.id)}" ${selected===c.id?'selected':''}>${esc(c.nombre)}</option>`).join('')}
+function edit(id){const p=toDraft(id?DATA.find(x=>x.id===id):{activo:true,stock:0,categoria:CATS[0]?.id||''});$('#dt').textContent=id?'Editar producto':'Nuevo producto';$('#ferr').textContent='';$('#del').style.display=(id&&ROL==='admin')?'':'none';$('#fields').innerHTML=Object.keys(LBL).map(k=>`<div class="${k==='imagen'?'full':''}"><label>${LBL[k]}</label>${k==='categoria'?`<select name="${k}">${catOptions(p[k])}</select>`:`<input name="${k}" value="${esc(p[k])}" ${k==='id'&&id?'readonly':''} ${k==='precio'||k==='cuotas'||k==='valor_cuota'?'type="number" min="0"':''}>`}</div>`).join('')+`<div class="full feature-box"><h4>Características generales</h4><div class="g">${[1,2,3,4,5].map(i=>`<div><label>Característica ${i}</label><input name="spec${i}" value="${esc(p['spec'+i])}"></div>`).join('')}</div><div class="hint">Dejá vacías las que no correspondan.</div></div><div class="full feature-box"><h4>Características adicionales</h4><div class="g"><div><label>Extra 1 · Título</label><input name="extra1_label" value="${esc(p.extra1_label)}"></div><div><label>Extra 1 · Valor</label><input name="extra1_value" value="${esc(p.extra1_value)}"></div><div><label>Extra 2 · Título</label><input name="extra2_label" value="${esc(p.extra2_label)}"></div><div><label>Extra 2 · Valor</label><input name="extra2_value" value="${esc(p.extra2_value)}"></div></div></div><div><label>Stock actual</label><input name="stock" type="number" min="0" value="${p.stock}"></div><div><label>Visibilidad</label><label style="display:block;margin-top:8px"><input type="checkbox" name="activo" style="width:auto" ${active(p.activo)?'checked':''}> Visible en el catálogo al publicar</label></div>`;$('#dlg').showModal();const im=$('#fields [name=imagen]');if(im){const u=document.createElement('input');u.type='file';u.accept='image/*';u.style.marginTop='6px';im.after(u);u.onchange=async()=>{const f=u.files[0];if(!f)return;const path=Date.now()+'-'+f.name.replace(/[^\w.]+/g,'_');const {error}=await sb.storage.from('productos').upload(path,f,{upsert:false});if(error)return $('#ferr').textContent=error.message;im.value=sb.storage.from('productos').getPublicUrl(path).data.publicUrl;};}}
+window.edit=edit;
 $('#new').onclick=()=>edit('');$('#cancel').onclick=()=>$('#dlg').close();
-$('#frm').onsubmit=async e=>{e.preventDefault();const f=new FormData($('#frm')),p={};
-  Object.keys(LBL).forEach(k=>p[k]=f.get(k));p.activo=!!f.get('activo');
-  if(!p.id.trim())return $('#ferr').textContent='Falta el ID';
-  try{await api('save',{p});DATA=(await api('list')).rows;draw();$('#dlg').close();}catch(x){$('#ferr').textContent=x.message;}};
-$('#del').onclick=async()=>{const id=$('#fields [name=id]').value;if(!confirm('¿Eliminar '+id+'? No se puede deshacer.'))return;
-  try{await api('del',{id});DATA=(await api('list')).rows;draw();$('#dlg').close();}catch(x){$('#ferr').textContent=x.message;}};
-$('#tpl').onclick=()=>{const ws=XLSX.utils.json_to_sheet(DATA.length?DATA:[Object.fromEntries(COLS.map(c=>[c,'']))],{header:COLS});
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Productos');XLSX.writeFile(wb,'productos.xlsx');};
-const nk=k=>String(k).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-$('#file').onchange=async e=>{const f=e.target.files[0];if(!f)return;
-  const wb=XLSX.read(await f.arrayBuffer());const raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
-  IMP=raw.map(r=>{const o={};for(const k in r)o[nk(k)]=r[k];
-    if(o.specs&&!o.spec1)String(o.specs).split('|').slice(0,4).forEach((s,i)=>o['spec'+(i+1)]=s.trim());return o;});
-  const bad=IMP.filter(r=>!String(r.id).trim()).length;IMP=IMP.filter(r=>String(r.id).trim());
-  const unk=[...new Set(IMP.map(r=>r.categoria).filter(c=>c&&!CATS.includes(String(c).toLowerCase())))];
-  $('#prev').innerHTML=`${IMP.length} filas listas${bad?` · <span class="no">${bad} sin ID (se omiten)</span>`:''}${unk.length?` · <span class="no">Categorías nuevas que la tienda aún no muestra: ${esc(unk.join(', '))}</span>`:''}`;
-  $('#doimp').disabled=!IMP.length;};
-$('#doimp').onclick=async()=>{const modo=$('#modo').value;if(!confirm(`Importar ${IMP.length} filas (${$('#modo').selectedOptions[0].text})?`))return;
-  $('#doimp').disabled=true;$('#impout').textContent='Procesando...';
-  try{const j=await api('import',{rows:IMP,modo});
-    $('#impout').textContent=j.res?j.res.map(r=>`${r.ok?'✔':'✖'} ${r.id}: ${r.msg}`).join('\n'):`Listo: ${j.nuevos} nuevos · ${j.actualizados} actualizados`;
-    DATA=(await api('list')).rows;draw();}catch(x){$('#impout').textContent='Error: '+x.message;}$('#doimp').disabled=false;};
-$('#run').onclick=async()=>{const lines=$('#cmd').value.split('\n').map(l=>l.trim()).filter(Boolean),ops=[],out=[];
-  lines.forEach(l=>{const m=l.match(/^(descontar|restar|sumar|agregar|ajustar|fijar)\s+(\S+)\s+(\d+)(?:\s+(.*))?$/i);
-    if(!m)return out.push('✖ No entendí: '+l);const k=m[1].toLowerCase();
-    ops.push({id:m[2],tipo:/^(descontar|restar)$/.test(k)?'descontar':/^(sumar|agregar)$/.test(k)?'sumar':'ajustar',cant:+m[3],nota:m[4]||'Consola'});});
-  try{if(ops.length){const j=await api('stock',{ops});j.res.forEach(r=>out.push(`${r.ok?'✔':'✖'} ${r.id}: ${r.msg}`));DATA=(await api('list')).rows;draw();}}catch(x){out.push('Error: '+x.message);}
-  $('#cout').textContent=out.join('\n');};
-async function hist(){try{const j=await api('movs');$('#hrows').innerHTML=j.rows.map(r=>`<tr>${[new Date(r[0]).toLocaleString('es-AR'),r[1],r[2],r[3],r[4],r[5]].map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="6" class="muted">Sin movimientos</td></tr>';}catch(x){$('#hrows').innerHTML=`<tr><td colspan="6" class="no">${esc(x.message)}</td></tr>`;}}
+$('#frm').onsubmit=async e=>{e.preventDefault();const f=new FormData($('#frm'));const p={};Object.keys(LBL).forEach(k=>p[k]=f.get(k));for(let i=1;i<=5;i++)p['spec'+i]=f.get('spec'+i)||'';p.extra1_label=f.get('extra1_label')||'';p.extra1_value=f.get('extra1_value')||'';p.extra2_label=f.get('extra2_label')||'';p.extra2_value=f.get('extra2_value')||'';p.stock=Math.max(0,parseInt(f.get('stock'),10)||0);p.precio=Math.max(0,parseInt(f.get('precio'),10)||0);p.cuotas=Math.max(0,parseInt(f.get('cuotas'),10)||0);p.valor_cuota=Math.max(0,parseInt(f.get('valor_cuota'),10)||0);p.activo=!!f.get('activo');if(!p.id.trim())return $('#ferr').textContent='Falta el ID';if(!p.nombre.trim())return $('#ferr').textContent='Falta el nombre';try{const {error}=await sb.from('productos_borrador').upsert({...p,id:p.id.trim(),updated_at:new Date().toISOString()});if(error)throw error;await load();$('#dlg').close()}catch(x){$('#ferr').textContent=x.message}};
+$('#del').onclick=async()=>{const id=$('#fields [name=id]').value;if(!confirm('¿Eliminar '+id+' del borrador?'))return;try{const {error}=await sb.from('productos_borrador').delete().eq('id',id);if(error)throw error;await load();$('#dlg').close()}catch(x){$('#ferr').textContent=x.message}};
+function editStock(id){const p=DATA.find(x=>x.id===id);if(!p)return;const n=prompt('Nuevo stock para '+p.marca+' '+p.nombre,p.stock);if(n===null)return;const v=parseInt(n,10);if(!Number.isInteger(v)||v<0)return alert('Cantidad inválida');moveStock(id,'ajustar',v)}
+async function moveStock(id,tipo,cant){let c=cant;if(c===undefined){const p=DATA.find(x=>x.id===id);c=prompt((tipo==='sumar'?'Cantidad a sumar':'Cantidad a descontar'),1);if(c===null)return;c=parseInt(c,10)}if(!Number.isInteger(c)||c<0)return alert('Cantidad inválida');try{await rpc('mover_stock',{p_id:id,p_tipo:tipo,p_cant:c,p_nota:'Edición desde productos'});await load()}catch(e){alert(e.message)}}window.moveStock=moveStock;window.editStock=editStock;
+function drawCats(){CATS.sort((a,b)=>a.orden-b.orden||a.nombre.localeCompare(b.nombre));$('#catRows').innerHTML=CATS.map(c=>`<div class="cat-row"><div><b>${esc(c.nombre)}</b><div class="muted">${esc(c.id)}</div></div><input type="number" value="${c.orden}" onchange="catOrder('${esc(c.id)}',this.value)"><label><input type="checkbox" ${c.activo?'checked':''} onchange="catActive('${esc(c.id)}',this.checked)"></label><div><button class="btn small" onclick="editCat('${esc(c.id)}')">Editar</button></div></div>`).join('')||'<div class="empty">No hay categorías.</div>'}
+async function saveCat(c){const {error}=await sb.from('categorias_borrador').upsert({...c,updated_at:new Date().toISOString()});if(error)throw error;await load()}
+function editCat(id){const c=CATS.find(x=>x.id===id);if(!c)return;EDIT_CAT_ID=id;$('#catDt').textContent='Editar categoría';$('#catName').value=c.nombre;$('#catOrder').value=c.orden;$('#catDel').style.display=ROL==='admin'?'':'none';$('#catErr').textContent='';$('#catDlg').showModal()}window.editCat=editCat;
+$('#newCat').onclick=()=>{EDIT_CAT_ID='';$('#catDt').textContent='Nueva categoría';$('#catName').value='';$('#catOrder').value=0;$('#catDel').style.display='none';$('#catErr').textContent='';$('#catDlg').showModal()};$('#catCancel').onclick=()=>$('#catDlg').close();
+$('#catFrm').onsubmit=async e=>{e.preventDefault();const nombre=$('#catName').value.trim();if(!nombre)return $('#catErr').textContent='Falta el nombre';const id=EDIT_CAT_ID||slugify(nombre);try{await saveCat({id,nombre,orden:parseInt($('#catOrder').value,10)||0,activo:true}) ;$('#catDlg').close()}catch(x){$('#catErr').textContent=x.message}};
+$('#catDel').onclick=async()=>{if(!EDIT_CAT_ID||!confirm('¿Eliminar esta categoría del borrador?'))return;try{const {error}=await sb.from('categorias_borrador').delete().eq('id',EDIT_CAT_ID);if(error)throw error;await load();$('#catDlg').close()}catch(x){$('#catErr').textContent=x.message}};
+window.catOrder=async(id,v)=>{const c=CATS.find(x=>x.id===id);if(c)await saveCat({...c,orden:parseInt(v,10)||0})};window.catActive=async(id,v)=>{const c=CATS.find(x=>x.id===id);if(c)await saveCat({...c,activo:v})};
+$('#tpl').onclick=()=>{const rows=DATA.length?DATA:[{id:'',categoria:'',marca:'',nombre:'',precio:'',cuotas:'',valor_cuota:'',badge:'',imagen:'',spec1:'',spec2:'',spec3:'',spec4:'',spec5:'',extra1_label:'',extra1_value:'',extra2_label:'',extra2_value:'',stock:'',activo:true}];const cols=['id','categoria','marca','nombre','precio','cuotas','valor_cuota','badge','imagen','spec1','spec2','spec3','spec4','spec5','extra1_label','extra1_value','extra2_label','extra2_value','stock','activo'];const ws=XLSX.utils.json_to_sheet(rows,{header:cols});const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Productos');XLSX.writeFile(wb,'productos.xlsx')};
+const nk=k=>String(k).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();$('#file').onchange=async e=>{const f=e.target.files[0];if(!f)return;const wb=XLSX.read(await f.arrayBuffer());const raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});IMP=raw.map(r=>{const o={};for(const k in r)o[nk(k)]=r[k];return o}).filter(r=>String(r.id).trim());$('#prev').textContent=IMP.length+' filas listas para agregar/actualizar el borrador.';$('#doimp').disabled=!IMP.length};
+$('#doimp').onclick=async()=>{if(!IMP.length)return;if(!confirm('Actualizar '+IMP.length+' productos en el borrador?'))return;$('#doimp').disabled=true;try{for(const r of IMP){const existing=DATA.find(x=>x.id===String(r.id).trim());const p=toDraft({...existing,...r,id:String(r.id).trim()});p.cuotas=Number(r.cuotas??p.cuotas)||0;p.valor_cuota=Number(r.valor_cuota??p.valor_cuota)||0;p.precio=Number(r.precio??p.precio)||0;const {error}=await sb.from('productos_borrador').upsert({...p,updated_at:new Date().toISOString()});if(error)throw error}await load();$('#impout').textContent='Listo: productos actualizados en el borrador. Revisalos antes de publicar.'}catch(x){$('#impout').textContent='Error: '+x.message}$('#doimp').disabled=false};
+$('#preview').onclick=()=>{const list=DATA.filter(p=>active(p.activo));$('#previewContent').innerHTML=`<div class="preview-grid">${list.map(p=>`<article class="preview-card"><img src="${esc(p.imagen||'')}" onerror="this.style.opacity=.2"><div class="pc"><div class="brand">${esc(p.marca)}</div><h3 style="margin:4px 0 8px">${esc(p.nombre)}</h3><div class="installment">${p.cuotas?esc(p.cuotas)+' cuotas':''}${p.valor_cuota?' de $ '+money(p.valor_cuota):''}</div><div class="muted" style="margin-top:8px">Stock: ${p.stock}</div></div></article>`).join('')||'<div class="empty">No hay productos activos para mostrar.</div>'}</div>`;$('#previewDlg').showModal()};
+$('#discard').onclick=async()=>{if(!confirm('Esto eliminará los cambios del borrador y volverá a lo último publicado. ¿Continuar?'))return;try{await rpc('descartar_borrador');await load();alert('Borrador descartado.')}catch(e){alert(e.message)}};
+$('#publish').onclick=async()=>{if(ROL!=='admin')return alert('Solo un administrador puede publicar.');if(!confirm('¿Publicar todos los cambios del borrador? Lo que esté activo pasará al catálogo público.'))return;try{await rpc('publicar_borrador');await load();alert('Publicado correctamente.')}catch(e){alert(e.message)}};
+async function hist(){try{const {data,error}=await sb.from('movimientos').select('*').order('fecha',{ascending:false}).limit(200);if(error)throw error;$('#hrows').innerHTML=(data||[]).map(m=>`<tr>${[new Date(m.fecha).toLocaleString('es-AR'),m.producto_id,m.tipo,m.cantidad,m.stock_final,m.nota||''].map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="6" class="empty">Sin movimientos</td></tr>'}catch(e){$('#hrows').innerHTML=`<tr><td colspan="6" class="no">${esc(e.message)}</td></tr>`}}
 </script></body></html>
