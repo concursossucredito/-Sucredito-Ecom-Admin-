@@ -34,9 +34,25 @@ main{max-width:1180px;margin:auto;padding:16px}
 .bar select{flex:0 0 200px}
 input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font:inherit;font-size:16px}
 .wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{padding:9px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed}
+th,td{padding:8px 7px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 th{background:#fafafa}
+
+/* Tabla de productos: todo queda dentro del panel sin esconder Editar */
+#prod .wrap{overflow-x:hidden}
+#prod table th:nth-child(1),#prod table td:nth-child(1){width:5%}
+#prod table th:nth-child(2),#prod table td:nth-child(2){width:27%}
+#prod table th:nth-child(3),#prod table td:nth-child(3){width:13%}
+#prod table th:nth-child(4),#prod table td:nth-child(4){width:13%}
+#prod table th:nth-child(5),#prod table td:nth-child(5){width:17%}
+#prod table th:nth-child(6),#prod table td:nth-child(6){width:16%}
+#prod table th:nth-child(7),#prod table td:nth-child(7){width:5%}
+#prod table th:nth-child(8),#prod table td:nth-child(8){width:9%;overflow:visible}
+#prod table td:nth-child(2),#prod table td:nth-child(6){max-width:0}
+#prod .stock-edit{gap:4px;justify-content:flex-start}
+#prod .stock-edit button{flex:0 0 30px;width:30px;min-width:30px}
+#prod .stock-edit button:last-child{flex-basis:52px;width:52px;min-width:52px}
+#prod table td:last-child .btn{width:72px;min-width:72px;padding-left:8px;padding-right:8px}
 .muted{color:#666;font-size:13px}
 .ok{color:#087d34}
 .no{color:#c00}
@@ -119,8 +135,10 @@ code{background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px}
   #login{margin:8vh 10px!important}
   .notice{font-size:13px;line-height:1.4}
   .stock-edit button{width:36px;height:36px;font-size:16px}
-  table{font-size:12px;min-width:640px}
+  table{font-size:12px;min-width:640px;table-layout:auto}
   th,td{padding:10px 8px}
+  #prod .wrap{overflow-x:auto}
+  #prod table{min-width:900px}
 }
 </style>
 </head>
