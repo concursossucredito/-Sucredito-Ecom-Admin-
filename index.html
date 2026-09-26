@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <title>Admin · Sucrédito</title>
 <link rel="icon" type="image/png" href="favicon-32.png">
@@ -10,11 +10,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;font:15px Inter,system-ui,sans-serif;background:#f4f5f7;color:#171717}
+body{margin:0;font:15px Inter,system-ui,sans-serif;background:#f4f5f7;color:#171717;-webkit-tap-highlight-color:transparent}
 header{background:#ffee00;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;font-weight:800;position:sticky;top:0;z-index:20}
-.brand{display:flex;align-items:center;gap:10px}
-.brand img{height:38px;width:auto;border-radius:7px}
-.status{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand img{height:38px;width:auto;border-radius:7px;flex:none}
+.brand span{white-space:nowrap}
+.status{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .pill{padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #ddd;font-size:12px}
 .pill.draft{background:#fff7cc;border-color:#e8d800}
 .pill.role-admin{background:#e8f5e9;border-color:#81c784}
@@ -30,8 +31,8 @@ main{max-width:1180px;margin:auto;padding:16px}
 .card{background:#fff;border-radius:15px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:14px}
 .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
 .bar input{flex:1;min-width:220px}
-input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font:inherit}
-.wrap{overflow-x:auto}
+input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font:inherit;font-size:16px}
+.wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{padding:9px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap}
 th{background:#fafafa}
@@ -74,12 +75,50 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .preview-financing b{font-weight:850}
 .preview-toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
 code{background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px}
+.desktop-only{display:block}
+.mobile-only{display:none}
+.m-cards{display:none;flex-direction:column;gap:10px}
+.m-card{border:1px solid #eee;border-radius:14px;padding:12px;background:#fff}
+.m-card-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px}
+.m-card-id{font-size:11px;font-weight:800;color:#888}
+.m-card-title{font-weight:800;font-size:15px;line-height:1.25;margin:0 0 4px}
+.m-card-meta{font-size:12px;color:#666;margin-bottom:10px}
+.m-card-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.m-card-actions .btn{min-height:42px}
+
 @media(max-width:700px){
-  .g,.preview-grid{grid-template-columns:1fr}
-  .cat-row{grid-template-columns:1fr 70px 90px 90px}
-  .finance-head,.finance-row{grid-template-columns:100px 1fr 42px}
-  .tabs{overflow:auto;flex-wrap:nowrap}
-  .tabs button{white-space:nowrap}
+  header{padding:10px 12px;gap:8px}
+  .brand span{font-size:14px}
+  .status{gap:6px}
+  .pill{font-size:11px;padding:5px 8px}
+  .who{display:none}
+  main{padding:12px 10px 28px}
+  .bar{flex-direction:column;align-items:stretch}
+  .bar input{min-width:0;width:100%}
+  .bar .btn,#topActions .btn{width:100%;min-height:46px;font-size:15px}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:6px;padding-bottom:4px}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{flex:0 0 auto;min-height:42px;padding:10px 14px;font-size:13px}
+  .card{padding:12px;border-radius:12px}
+  .desktop-only{display:none!important}
+  .mobile-only{display:block}
+  .m-cards{display:flex}
+  .g{grid-template-columns:1fr}
+  .finance-head,.finance-row{grid-template-columns:1fr 1fr 40px}
+  .cat-row{grid-template-columns:1fr;gap:8px;padding:12px 0;border-bottom:1px solid #eee}
+  .cat-head{display:none}
+  dialog{width:100%;max-width:100%;height:100%;max-height:100%;border-radius:0;margin:0}
+  .dlg-inner{padding:16px 14px 24px;max-height:100vh}
+  .dlg-actions{flex-direction:column-reverse;position:sticky;bottom:0;background:#fff;padding-top:12px;gap:8px}
+  .dlg-actions .btn,.dlg-actions span{width:100%;display:flex;flex-direction:column;gap:8px}
+  .dlg-actions span .btn{width:100%;min-height:46px}
+  .preview-grid{grid-template-columns:1fr}
+  .preview-toolbar{flex-direction:column;align-items:stretch}
+  #login{margin:8vh 10px!important}
+  .notice{font-size:13px;line-height:1.4}
+  .stock-edit button{width:36px;height:36px;font-size:16px}
+  table{font-size:12px;min-width:640px}
+  th,td{padding:10px 8px}
 }
 </style>
 </head>
@@ -92,7 +131,7 @@ code{background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px}
   <div class="status">
     <span id="state" class="pill draft">BORRADOR</span>
     <span id="rolePill" class="pill"></span>
-    <span id="who" class="muted"></span>
+    <span id="who" class="who muted"></span>
     <button class="btn small" id="out" style="display:none">Salir</button>
   </div>
 </header>
@@ -104,7 +143,7 @@ code{background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px}
     <input type="email" id="em" autocomplete="username" placeholder="email" style="margin-bottom:8px">
     <input type="password" id="pw" autocomplete="current-password" placeholder="clave">
     <p class="no" id="lerr"></p>
-    <button class="btn red" id="go">Entrar</button>
+    <button class="btn red" id="go" style="width:100%;min-height:46px;margin-top:8px">Entrar</button>
   </div>
 
   <div id="app" style="display:none">
@@ -126,10 +165,12 @@ code{background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px}
 
     <section class="sec on card" id="prod">
       <div class="bar">
-        <input id="q" placeholder="Buscar por ID, marca, nombre o categoría...">
+        <input id="q" placeholder="Buscar por ID, marca, nombre...">
         <button class="btn red" id="new">+ Nuevo producto</button>
       </div>
-      <div class="wrap">
+
+      <!-- Desktop table -->
+      <div class="wrap desktop-only">
         <table>
           <thead>
             <tr>
@@ -146,17 +187,20 @@ code{background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px}
           <tbody id="rows"></tbody>
         </table>
       </div>
+
+      <!-- Mobile cards -->
+      <div class="m-cards mobile-only" id="mCards"></div>
     </section>
 
     <section class="sec card" id="cats">
       <div class="bar">
         <div>
           <h3 style="margin:0">Categorías</h3>
-          <div class="muted">Las categorías activas aparecen en el catálogo cuando publicás.</div>
+          <div class="muted">Activas al publicar.</div>
         </div>
         <button class="btn red" id="newCat">+ Nueva categoría</button>
       </div>
-      <div class="cat-head cat-row">
+      <div class="cat-head cat-row desktop-only">
         <span>Nombre</span><span>Orden</span><span>Activa</span><span></span>
       </div>
       <div id="catRows"></div>
@@ -166,21 +210,21 @@ code{background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px}
       <h3>Carga masiva desde Excel</h3>
       <p class="muted">Agrega o actualiza productos en el <b>borrador</b>. No publica solo.</p>
       <div class="bar">
-        <button class="btn" id="tpl">Descargar Excel actual / plantilla</button>
+        <button class="btn" id="tpl">Descargar Excel / plantilla</button>
       </div>
       <div>
         <label style="font-size:12px;font-weight:750">Archivo (.xlsx / .xls / .csv)</label>
         <input type="file" id="file" accept=".xlsx,.xls,.csv">
       </div>
       <p id="prev" class="muted"></p>
-      <button class="btn red" id="doimp" disabled>Agregar / actualizar productos</button>
+      <button class="btn red" id="doimp" disabled style="width:100%;min-height:46px">Agregar / actualizar productos</button>
       <pre id="impout"></pre>
     </section>
 
     <section class="sec card" id="imgs">
       <h3>Subida masiva de imágenes</h3>
       <p class="muted">
-        El nombre del archivo debe ser el <b>ID</b> del producto + extensión.<br>
+        Nombre del archivo = <b>ID</b> del producto.<br>
         Ej: <code>67.jpg</code>, <code>110.webp</code>
       </p>
       <div class="notice"><b>Solo actualiza el borrador.</b> Después hay que publicar.</div>
@@ -189,13 +233,13 @@ code{background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px}
         <input type="file" id="bulkImages" accept="image/*" multiple>
       </div>
       <p id="imgPrev" class="muted" style="margin-top:10px"></p>
-      <button class="btn red" id="doUploadImages" disabled>Subir y vincular imágenes</button>
+      <button class="btn red" id="doUploadImages" disabled style="width:100%;min-height:46px">Subir y vincular imágenes</button>
       <pre id="imgOut" style="margin-top:12px;white-space:pre-wrap;font-size:13px"></pre>
     </section>
 
     <section class="sec card" id="his">
       <h3>Historial de cambios</h3>
-      <p class="muted">Quién hizo cada movimiento (stock, ediciones, publicaciones).</p>
+      <p class="muted">Quién hizo cada movimiento.</p>
       <div class="wrap">
         <table>
           <thead>
@@ -303,12 +347,12 @@ const canImport = () => isAdmin() || isEditor();
 const canSeeAllHistory = () => isAdmin() || isEditor();
 const canEditProduct = (p) => {
   if (isAdmin() || isEditor()) return true;
-  if (isProveedor()) return String(p.creado_por || '') === USER_EMAIL;
+  if (isProveedor()) return String(p.creado_por || '').toLowerCase() === USER_EMAIL.toLowerCase();
   return false;
 };
 const visibleProducts = () => {
   if (isProveedor()) {
-    return DATA.filter(p => String(p.creado_por || '') === USER_EMAIL);
+    return DATA.filter(p => String(p.creado_por || '').toLowerCase() === USER_EMAIL.toLowerCase());
   }
   return DATA;
 };
@@ -388,10 +432,10 @@ function applyRoleUI() {
   pill.className = 'pill role-' + ROL;
 
   $('#roleNotice').innerHTML = isProveedor()
-    ? '<b>Modo proveedor.</b> Solo ves y editás <b>tus</b> productos. No podés publicar. El OK final lo da Sucrédito.'
+    ? '<b>Modo proveedor.</b> Solo ves y editás <b>tus</b> productos. El OK final de publicar lo da Sucrédito.'
     : isEditor()
-      ? '<b>Modo editor.</b> Podés editar productos, stock e imágenes. <b>No podés publicar.</b> El OK final lo da un admin.'
-      : '<b>Modo admin.</b> Tenés control total. Solo vos podés publicar cambios al catálogo público.';
+      ? '<b>Modo editor.</b> Podés editar productos, stock e imágenes. <b>No podés publicar.</b>'
+      : '<b>Modo admin.</b> Control total. Solo vos podés publicar al catálogo.';
 
   $('#publish').style.display = canPublish() ? '' : 'none';
   $('#discard').style.display = isAdmin() ? '' : 'none';
@@ -415,13 +459,19 @@ async function load() {
 async function boot() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return;
-  USER_EMAIL = session.user.email || '';
-  const { data: adm } = await sb.from('admins').select('rol').eq('email', USER_EMAIL).maybeSingle();
+  USER_EMAIL = (session.user.email || '').toLowerCase();
+  const { data: adm } = await sb.from('admins').select('rol').eq('email', session.user.email).maybeSingle();
   if (!adm) {
-    await sb.auth.signOut();
-    throw Error('Este usuario no tiene permiso de administración');
+    // try lowercase match
+    const { data: adm2 } = await sb.from('admins').select('rol').ilike('email', USER_EMAIL).maybeSingle();
+    if (!adm2) {
+      await sb.auth.signOut();
+      throw Error('Este usuario no tiene permiso de administración');
+    }
+    ROL = String(adm2.rol || 'editor').toLowerCase();
+  } else {
+    ROL = String(adm.rol || 'editor').toLowerCase();
   }
-  ROL = String(adm.rol || 'editor').toLowerCase();
   if (!['admin', 'editor', 'proveedor'].includes(ROL)) ROL = 'editor';
 
   $('#login').style.display = 'none';
@@ -465,6 +515,8 @@ function draw() {
   const list = visibleProducts().filter(p =>
     !q || [p.id, p.marca, p.nombre, p.categoria, p.creado_por].join(' ').toLowerCase().includes(q)
   );
+
+  // Desktop
   $('#rows').innerHTML = list.map(p => {
     const can = canEditProduct(p);
     return `
@@ -488,6 +540,33 @@ function draw() {
       <td>${can ? `<button class="btn small" onclick="edit('${esc(p.id)}')">Editar</button>` : ''}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="8" class="empty">Sin productos</td></tr>';
+
+  // Mobile cards
+  $('#mCards').innerHTML = list.map(p => {
+    const can = canEditProduct(p);
+    return `
+    <article class="m-card">
+      <div class="m-card-top">
+        <div>
+          <div class="m-card-id">#${esc(p.id)}</div>
+          <div class="m-card-title">${esc(p.marca)} ${esc(p.nombre)}</div>
+          <div class="m-card-meta">
+            ${esc(p.categoria || 'Sin cat.')} · ${esc(formatQuotaSummary(p))}<br>
+            Stock: <b class="${p.stock > 0 ? 'ok' : 'no'}">${p.stock}</b>
+            ${active(p.activo) ? '' : ' · <span class="no">Oculto</span>'}
+          </div>
+        </div>
+      </div>
+      <div class="m-card-actions">
+        ${can ? `
+          <button class="btn small" onclick="moveStock('${esc(p.id)}','descontar')">−</button>
+          <button class="btn small" onclick="moveStock('${esc(p.id)}','sumar')">+</button>
+          <button class="btn small" onclick="editStock('${esc(p.id)}')">Stock</button>
+          <button class="btn small red" onclick="edit('${esc(p.id)}')">Editar</button>
+        ` : '<span class="muted">Solo lectura</span>'}
+      </div>
+    </article>`;
+  }).join('') || '<div class="empty">Sin productos</div>';
 }
 $('#q').oninput = draw;
 
@@ -516,8 +595,8 @@ function addFinanceOption(cuotas = '', valor = '') {
   const row = document.createElement('div');
   row.className = 'finance-row';
   row.innerHTML = `
-    <input class="finance-cuotas" type="number" min="1" max="12" placeholder="Ej. 6" value="${esc(cuotas)}">
-    <input class="finance-valor" type="number" min="1" placeholder="Ej. 25000" value="${esc(valor)}">
+    <input class="finance-cuotas" type="number" min="1" max="12" inputmode="numeric" placeholder="Cuotas" value="${esc(cuotas)}">
+    <input class="finance-valor" type="number" min="1" inputmode="numeric" placeholder="Valor cuota" value="${esc(valor)}">
     <button type="button" class="btn finance-remove">×</button>`;
   row.querySelector('.finance-remove').onclick = () => { row.remove(); updateFinanceUI(); };
   list.appendChild(row);
@@ -564,13 +643,13 @@ function edit(id) {
       <label>${LBL[k]}</label>
       ${k === 'categoria'
         ? `<select name="${k}">${catOptions(p[k])}</select>`
-        : `<input name="${k}" value="${esc(p[k])}" ${k === 'id' && id ? 'readonly' : ''} ${k === 'precio' ? 'type="number" min="0"' : ''}>`}
+        : `<input name="${k}" value="${esc(p[k])}" ${k === 'id' && id ? 'readonly' : ''} ${k === 'precio' ? 'type="number" min="0" inputmode="decimal"' : ''}>`}
     </div>
   `).join('') + `
     <div class="full finance-box">
       <h4 style="margin:0 0 4px">Opciones de financiación</h4>
       <div class="finance-head" style="margin-top:12px">
-        <span>Cantidad de cuotas</span><span>Valor de cada cuota</span><span></span>
+        <span>Cuotas</span><span>Valor</span><span></span>
       </div>
       <div id="financeList"></div>
       <button type="button" class="btn small finance-add" id="addFinance">+ Agregar opción</button>
@@ -594,7 +673,7 @@ function edit(id) {
     </div>
     <div>
       <label>Stock</label>
-      <input name="stock" type="number" min="0" value="${p.stock}">
+      <input name="stock" type="number" min="0" inputmode="numeric" value="${p.stock}">
     </div>
     <div>
       <label>Visibilidad</label>
@@ -656,9 +735,8 @@ $('#frm').onsubmit = async e => {
       return $('#ferr').textContent = 'No tenés permiso para editar este producto.';
     }
 
-    // Dueño: si es nuevo y proveedor, se asigna a él; admin/editor pueden dejar el existente
     if (existing) {
-      p.creado_por = existing.creado_por || (isProveedor() ? USER_EMAIL : USER_EMAIL);
+      p.creado_por = existing.creado_por || USER_EMAIL;
       if (isProveedor()) p.creado_por = USER_EMAIL;
     } else {
       p.creado_por = USER_EMAIL;
@@ -743,8 +821,11 @@ function drawCats() {
   $('#catRows').innerHTML = CATS.map(c => `
     <div class="cat-row">
       <div><b>${esc(c.nombre)}</b><div class="muted">${esc(c.id)}</div></div>
-      <input type="number" value="${c.orden}" onchange="catOrder('${esc(c.id)}',this.value)">
-      <label><input type="checkbox" ${c.activo ? 'checked' : ''} onchange="catActive('${esc(c.id)}',this.checked)"></label>
+      <input type="number" inputmode="numeric" value="${c.orden}" onchange="catOrder('${esc(c.id)}',this.value)">
+      <label style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" ${c.activo ? 'checked' : ''} onchange="catActive('${esc(c.id)}',this.checked)">
+        Activa
+      </label>
       <div><button class="btn small" onclick="editCat('${esc(c.id)}')">Editar</button></div>
     </div>
   `).join('') || '<div class="empty">No hay categorías.</div>';
@@ -824,7 +905,6 @@ window.catActive = async (id, v) => {
   if (c) await saveCat({ ...c, activo: v });
 };
 
-/* Excel */
 function excelColumns() {
   const base = ['id', 'categoria', 'marca', 'nombre', 'precio', 'badge', 'imagen'];
   const financing = [];
@@ -966,7 +1046,6 @@ $('#doimp').onclick = async () => {
   $('#doimp').disabled = false;
 };
 
-/* Imágenes masivas */
 let BULK_FILES = [];
 $('#bulkImages').onchange = () => {
   BULK_FILES = Array.from($('#bulkImages').files || []);
@@ -1064,13 +1143,15 @@ $('#publish').onclick = async () => {
 
 async function hist() {
   try {
-    let q = sb.from('auditoria').select('*').order('fecha', { ascending: false }).limit(200);
-    // Proveedor solo ve lo suyo (filtramos en cliente por producto o por usuario)
-    const { data, error } = await q;
+    const { data, error } = await sb
+      .from('auditoria')
+      .select('*')
+      .order('fecha', { ascending: false })
+      .limit(200);
     if (error) throw error;
     let rows = data || [];
     if (isProveedor()) {
-      rows = rows.filter(m => m.usuario === USER_EMAIL);
+      rows = rows.filter(m => String(m.usuario || '').toLowerCase() === USER_EMAIL);
     }
     $('#hrows').innerHTML = rows.map(m => `
       <tr>
