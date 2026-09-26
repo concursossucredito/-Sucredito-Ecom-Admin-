@@ -53,6 +53,31 @@ th{background:#fafafa}
 #prod .stock-edit button{flex:0 0 30px;width:30px;min-width:30px}
 #prod .stock-edit button:last-child{flex-basis:52px;width:52px;min-width:52px}
 #prod table td:last-child .btn{width:72px;min-width:72px;padding-left:8px;padding-right:8px}
+.product-cell{display:flex;align-items:center;gap:9px;min-width:0}
+.product-thumb{width:48px;height:48px;object-fit:contain;border:1px solid #eee;border-radius:8px;background:#f7f7f7;flex:0 0 48px}
+.product-cell-info{min-width:0;overflow:hidden}
+.product-cell-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.product-cell-brand{font-size:11px;color:#777;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dlg-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.dlg-head h3{margin:0}
+.dlg-close{width:38px;height:38px;padding:0;border-radius:10px;font-size:24px;line-height:1;display:flex;align-items:center;justify-content:center}
+.save-progress{display:none;margin:0 0 14px;padding:10px 12px;border:1px solid #e5e5e5;border-radius:10px;background:#fafafa}
+.save-progress.on{display:block}
+.save-progress-row{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:750}
+.save-spinner{width:16px;height:16px;border:2px solid #ddd;border-top-color:#e30f1c;border-radius:50%;animation:saveSpin .75s linear infinite;flex:0 0 16px}
+.save-track{height:5px;background:#e9e9e9;border-radius:999px;overflow:hidden;margin-top:8px}
+.save-fill{height:100%;width:35%;background:#e30f1c;border-radius:999px;animation:savePulse 1.2s ease-in-out infinite}
+.save-progress.done{border-color:#b9dfc5;background:#f2fbf4}
+.save-progress.done .save-spinner{display:none}
+.save-progress.done .save-fill{width:100%;animation:none;background:#087d34}
+.save-progress.error{border-color:#f1b8b8;background:#fff5f5}
+.save-progress.error .save-spinner{display:none}
+.save-progress.error .save-fill{width:100%;animation:none;background:#c00}
+@keyframes saveSpin{to{transform:rotate(360deg)}}
+@keyframes savePulse{0%{transform:translateX(-100%)}50%{transform:translateX(80%)}100%{transform:translateX(260%)}}
+.unsaved-dialog{max-width:460px;width:92%;padding:0}
+.unsaved-inner{padding:20px}
+.unsaved-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;flex-wrap:wrap}
 .muted{color:#666;font-size:13px}
 .ok{color:#087d34}
 .no{color:#c00}
@@ -99,6 +124,8 @@ code{background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px}
 .m-card-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px}
 .m-card-id{font-size:11px;font-weight:800;color:#888}
 .m-card-title{font-weight:800;font-size:15px;line-height:1.25;margin:0 0 4px}
+.m-card-product{display:flex;gap:10px;min-width:0}
+.m-card-thumb{width:56px;height:56px;object-fit:contain;border:1px solid #eee;border-radius:9px;background:#f7f7f7;flex:0 0 56px}
 .m-card-meta{font-size:12px;color:#666;margin-bottom:10px}
 .m-card-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .m-card-actions .btn{min-height:42px}
@@ -283,18 +310,37 @@ code{background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px}
 <dialog id="dlg">
   <form method="dialog" id="frm">
     <div class="dlg-inner">
-      <h3 id="dt"></h3>
+      <div class="dlg-head">
+        <h3 id="dt"></h3>
+        <button type="button" class="btn dlg-close" id="dlgClose" aria-label="Cerrar">×</button>
+      </div>
+      <div class="save-progress" id="saveProgress" aria-live="polite">
+        <div class="save-progress-row"><span class="save-spinner"></span><span id="saveProgressText">Guardando cambios...</span></div>
+        <div class="save-track"><div class="save-fill"></div></div>
+      </div>
       <div class="g" id="fields"></div>
       <p class="no" id="ferr"></p>
       <div class="dlg-actions">
         <button type="button" class="btn" id="del">Eliminar</button>
         <span>
-          <button type="button" class="btn" id="cancel">Cancelar</button>
-          <button type="submit" class="btn red">Guardar borrador</button>
+          <button type="button" class="btn" id="cancel">Cerrar</button>
+          <button type="submit" class="btn red" id="saveProductBtn">Guardar borrador</button>
         </span>
       </div>
     </div>
   </form>
+</dialog>
+
+<dialog id="unsavedDlg" class="unsaved-dialog">
+  <div class="unsaved-inner">
+    <h3 style="margin:0 0 8px">Cambios sin guardar</h3>
+    <div class="muted">Hiciste cambios en este producto. ¿Querés guardarlos antes de cerrar?</div>
+    <div class="unsaved-actions">
+      <button type="button" class="btn" id="keepEditing">Seguir editando</button>
+      <button type="button" class="btn" id="discardProduct">Descartar cambios</button>
+      <button type="button" class="btn red" id="saveBeforeClose">Guardar cambios</button>
+    </div>
+  </div>
 </dialog>
 
 <dialog id="catDlg">
@@ -358,6 +404,8 @@ let CATS = [];
 let ROL = '';
 let USER_EMAIL = '';
 let EDIT_CAT_ID = '';
+let PRODUCT_DIRTY = false;
+let PRODUCT_SAVING = false;
 
 const isAdmin = () => ROL === 'admin';
 const isEditor = () => ROL === 'editor';
@@ -555,7 +603,15 @@ function draw() {
     return `
     <tr>
       <td>${esc(p.id)}</td>
-      <td>${esc(p.marca)} ${esc(p.nombre)}</td>
+      <td>
+        <div class="product-cell">
+          <img class="product-thumb" src="${esc(p.imagen || '')}" alt="" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2248%22 height=%2248%22 viewBox=%220 0 48 48%22%3E%3Crect width=%2248%22 height=%2248%22 rx=%228%22 fill=%22%23f3f3f3%22/%3E%3Cpath d=%22M13 34l8-9 6 6 4-5 7 8H13z%22 fill=%22%23ccc%22/%3E%3Ccircle cx=%2220%22 cy=%2218%22 r=%224%22 fill=%22%23ccc%22/%3E%3C/svg%3E'">
+          <div class="product-cell-info">
+            <div class="product-cell-brand">${esc(p.marca)}</div>
+            <div class="product-cell-name">${esc(p.nombre)}</div>
+          </div>
+        </div>
+      </td>
       <td>${esc(p.categoria)}</td>
       <td><b>${esc(formatQuotaSummary(p))}</b></td>
       <td>
@@ -580,13 +636,16 @@ function draw() {
     return `
     <article class="m-card">
       <div class="m-card-top">
-        <div>
-          <div class="m-card-id">#${esc(p.id)}</div>
-          <div class="m-card-title">${esc(p.marca)} ${esc(p.nombre)}</div>
+        <div class="m-card-product">
+          <img class="m-card-thumb" src="${esc(p.imagen || '')}" alt="" onerror="this.onerror=null;this.style.opacity='.25'">
+          <div style="min-width:0">
+            <div class="m-card-id">#${esc(p.id)}</div>
+            <div class="m-card-title">${esc(p.marca)} ${esc(p.nombre)}</div>
           <div class="m-card-meta">
             ${esc(p.categoria || 'Sin cat.')} · ${esc(formatQuotaSummary(p))}<br>
             Stock: <b class="${p.stock > 0 ? 'ok' : 'no'}">${p.stock}</b>
             ${active(p.activo) ? '' : ' · <span class="no">Oculto</span>'}
+            </div>
           </div>
         </div>
       </div>
@@ -632,7 +691,7 @@ function addFinanceOption(cuotas = '', valor = '') {
     <input class="finance-cuotas" type="number" min="1" max="12" inputmode="numeric" placeholder="Cuotas" value="${esc(cuotas)}">
     <input class="finance-valor" type="number" min="1" inputmode="numeric" placeholder="Valor cuota" value="${esc(valor)}">
     <button type="button" class="btn finance-remove">×</button>`;
-  row.querySelector('.finance-remove').onclick = () => { row.remove(); updateFinanceUI(); };
+  row.querySelector('.finance-remove').onclick = () => { row.remove(); updateFinanceUI(); setProductDirty(); };
   list.appendChild(row);
   updateFinanceUI();
 }
@@ -658,6 +717,58 @@ function getFinanceOptions() {
   return options.sort((a, b) => a.cuotas - b.cuotas);
 }
 
+function setProductDirty(v = true) {
+  PRODUCT_DIRTY = !!v;
+}
+
+function setSaveProgress(state, text) {
+  const box = $('#saveProgress');
+  const label = $('#saveProgressText');
+  if (!box) return;
+  box.classList.remove('on','done','error');
+  if (state === 'saving') {
+    box.classList.add('on');
+    if (label) label.textContent = text || 'Guardando cambios...';
+  } else if (state === 'done') {
+    box.classList.add('on','done');
+    if (label) label.textContent = text || 'Cambios guardados.';
+  } else if (state === 'error') {
+    box.classList.add('on','error');
+    if (label) label.textContent = text || 'No se pudieron guardar los cambios.';
+  } else if (label) {
+    label.textContent = 'Guardando cambios...';
+  }
+}
+
+function setProductSaving(v) {
+  PRODUCT_SAVING = !!v;
+  const save = $('#saveProductBtn');
+  const cancel = $('#cancel');
+  const close = $('#dlgClose');
+  const del = $('#del');
+  if (save) save.disabled = PRODUCT_SAVING;
+  if (cancel) cancel.disabled = PRODUCT_SAVING;
+  if (close) close.disabled = PRODUCT_SAVING;
+  if (del) del.disabled = PRODUCT_SAVING;
+}
+
+function requestProductClose() {
+  if (PRODUCT_SAVING) return;
+  if (!PRODUCT_DIRTY) return $('#dlg').close();
+  $('#unsavedDlg').showModal();
+}
+
+function discardProductChanges() {
+  $('#unsavedDlg').close();
+  PRODUCT_DIRTY = false;
+  $('#dlg').close();
+}
+
+function saveProductFromClose() {
+  $('#unsavedDlg').close();
+  $('#frm').requestSubmit();
+}
+
 function edit(id) {
   const existing = id ? DATA.find(x => String(x.id) === String(id)) : null;
   if (id && !existing) {
@@ -673,6 +784,9 @@ function edit(id) {
 
   $('#dt').textContent = id ? 'Editar producto' : 'Nuevo producto';
   $('#ferr').textContent = '';
+  PRODUCT_DIRTY = false;
+  PRODUCT_SAVING = false;
+  setSaveProgress('idle');
   $('#del').style.display = (id && isAdmin()) ? '' : 'none';
 
   $('#fields').innerHTML = Object.keys(LBL).map(k => `
@@ -724,7 +838,9 @@ function edit(id) {
   const options = normalizeOptions(p);
   if (options.length) options.forEach(o => addFinanceOption(o.cuotas, o.valor_cuota));
   else addFinanceOption();
-  $('#addFinance').onclick = () => addFinanceOption();
+  $('#addFinance').onclick = () => { addFinanceOption(); setProductDirty(); };
+  $('#fields').oninput = () => setProductDirty();
+  $('#fields').onchange = () => setProductDirty();
 
   const im = $('#fields [name=imagen]');
   if (im) {
@@ -740,6 +856,7 @@ function edit(id) {
       const { error } = await sb.storage.from('productos').upload(path, f, { upsert: false });
       if (error) return $('#ferr').textContent = error.message;
       im.value = sb.storage.from('productos').getPublicUrl(path).data.publicUrl;
+      setProductDirty();
     };
   }
   try {
@@ -755,11 +872,22 @@ function edit(id) {
 }
 window.edit = edit;
 $('#new').onclick = () => edit('');
-$('#cancel').onclick = () => $('#dlg').close();
+$('#cancel').onclick = requestProductClose;
+$('#dlgClose').onclick = requestProductClose;
+$('#dlg').addEventListener('cancel', e => {
+  if (PRODUCT_SAVING) { e.preventDefault(); return; }
+  if (PRODUCT_DIRTY) { e.preventDefault(); requestProductClose(); }
+});
+$('#keepEditing').onclick = () => $('#unsavedDlg').close();
+$('#discardProduct').onclick = discardProductChanges;
+$('#saveBeforeClose').onclick = saveProductFromClose;
 
 $('#frm').onsubmit = async e => {
   e.preventDefault();
+  if (PRODUCT_SAVING) return;
   $('#ferr').textContent = '';
+  setProductSaving(true);
+  setSaveProgress('saving','Guardando cambios...');
   try {
     const f = new FormData($('#frm'));
     const p = {};
@@ -804,9 +932,15 @@ $('#frm').onsubmit = async e => {
 
     await logAudit(existing ? 'editar_producto' : 'crear_producto', p.id.trim(), p.marca + ' ' + p.nombre);
     await load();
+    PRODUCT_DIRTY = false;
+    setSaveProgress('done','Cambios guardados correctamente.');
+    await new Promise(r => setTimeout(r, 550));
     $('#dlg').close();
   } catch (x) {
     $('#ferr').textContent = x.message;
+    setSaveProgress('error','No se pudieron guardar los cambios.');
+  } finally {
+    setProductSaving(false);
   }
 };
 
@@ -819,6 +953,7 @@ $('#del').onclick = async () => {
     if (error) throw error;
     await logAudit('eliminar_producto', id, null);
     await load();
+    PRODUCT_DIRTY = false;
     $('#dlg').close();
   } catch (x) {
     $('#ferr').textContent = x.message;
