@@ -625,7 +625,10 @@ function getFinanceOptions() {
 }
 
 function edit(id) {
-  const existing = id ? DATA.find(x => x.id === id) : null;
+  const existing = id ? DATA.find(x => String(x.id) === String(id)) : null;
+  if (id && !existing) {
+    return alert('No se encontró el producto. Actualizá la lista e intentá de nuevo.');
+  }
   if (id && existing && !canEditProduct(existing)) {
     return alert('No tenés permiso para editar este producto.');
   }
@@ -705,7 +708,16 @@ function edit(id) {
       im.value = sb.storage.from('productos').getPublicUrl(path).data.publicUrl;
     };
   }
-  $('#dlg').showModal();
+  try {
+    if (typeof $('#dlg').showModal === 'function') {
+      $('#dlg').showModal();
+    } else {
+      $('#dlg').setAttribute('open', '');
+    }
+  } catch (e) {
+    console.error('No se pudo abrir el panel de edición:', e);
+    alert('No se pudo abrir el panel de edición. Actualizá la página e intentá de nuevo.');
+  }
 }
 window.edit = edit;
 $('#new').onclick = () => edit('');
@@ -730,7 +742,7 @@ $('#frm').onsubmit = async e => {
     if (!p.id.trim()) return $('#ferr').textContent = 'Falta el ID';
     if (!p.nombre.trim()) return $('#ferr').textContent = 'Falta el nombre';
 
-    const existing = DATA.find(x => x.id === p.id.trim());
+    const existing = DATA.find(x => String(x.id) === String(p.id.trim()));
     if (existing && !canEditProduct(existing)) {
       return $('#ferr').textContent = 'No tenés permiso para editar este producto.';
     }
@@ -780,7 +792,7 @@ $('#del').onclick = async () => {
 };
 
 function editStock(id) {
-  const p = DATA.find(x => x.id === id);
+  const p = DATA.find(x => String(x.id) === String(id));
   if (!p || !canEditProduct(p)) return alert('Sin permiso.');
   const n = prompt('Nuevo stock para ' + p.marca + ' ' + p.nombre, p.stock);
   if (n === null) return;
@@ -790,7 +802,7 @@ function editStock(id) {
 }
 
 async function moveStock(id, tipo, cant) {
-  const p = DATA.find(x => x.id === id);
+  const p = DATA.find(x => String(x.id) === String(id));
   if (!p || !canEditProduct(p)) return alert('Sin permiso.');
   let c = cant;
   if (c === undefined) {
@@ -842,7 +854,7 @@ async function saveCat(c) {
 
 function editCat(id) {
   if (!canManageCats()) return;
-  const c = CATS.find(x => x.id === id);
+  const c = CATS.find(x => String(x.id) === String(id));
   if (!c) return;
   EDIT_CAT_ID = id;
   $('#catDt').textContent = 'Editar categoría';
@@ -896,12 +908,12 @@ $('#catDel').onclick = async () => {
 
 window.catOrder = async (id, v) => {
   if (!canManageCats()) return;
-  const c = CATS.find(x => x.id === id);
+  const c = CATS.find(x => String(x.id) === String(id));
   if (c) await saveCat({ ...c, orden: parseInt(v, 10) || 0 });
 };
 window.catActive = async (id, v) => {
   if (!canManageCats()) return;
-  const c = CATS.find(x => x.id === id);
+  const c = CATS.find(x => String(x.id) === String(id));
   if (c) await saveCat({ ...c, activo: v });
 };
 
@@ -1008,7 +1020,7 @@ $('#doimp').onclick = async () => {
     for (const r of IMP) {
       const id = String(r.id || '').trim();
       if (!id) throw Error('Fila ' + r.__row + ': falta ID');
-      const existing = DATA.find(x => x.id === id);
+      const existing = DATA.find(x => String(x.id) === String(id));
       if (existing && isProveedor() && !canEditProduct(existing)) {
         throw Error('Fila ' + r.__row + ': no podés modificar el producto ' + id);
       }
