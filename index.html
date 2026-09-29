@@ -193,6 +193,15 @@ code{background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px}
     <button class="btn red" id="go" style="width:100%;min-height:46px;margin-top:8px">Entrar</button>
   </div>
 
+  <div id="setPassword" class="card" style="max-width:400px;margin:12vh auto;display:none">
+    <h3 id="setPasswordTitle">Definí tu contraseña</h3>
+    <p class="muted" id="setPasswordSub">Elegí una clave para entrar al panel.</p>
+    <input type="password" id="newPw1" placeholder="Nueva contraseña (mín. 6)" style="margin-bottom:8px" autocomplete="new-password">
+    <input type="password" id="newPw2" placeholder="Repetir contraseña" autocomplete="new-password">
+    <p class="no" id="setPwErr"></p>
+    <button class="btn red" id="setPwBtn" style="width:100%;min-height:46px;margin-top:8px">Guardar contraseña y entrar</button>
+  </div>
+
   <div id="app" style="display:none">
     <div class="card notice" id="roleNotice"></div>
 
@@ -588,13 +597,73 @@ function drawCatFilter() {
   sel.value = current;
 }
 
+function getAuthParamsFromUrl() {
+  const hash = (location.hash || '').replace(/^#/, '');
+  const search = (location.search || '').replace(/^\?/, '');
+  const params = new URLSearchParams(hash || search);
+  return {
+    type: (params.get('type') || '').toLowerCase(),
+    access_token: params.get('access_token') || '',
+    refresh_token: params.get('refresh_token') || '',
+  };
+}
+
+function clearAuthHash() {
+  if (location.hash || location.search.indexOf('access_token') >= 0) {
+    history.replaceState(null, '', location.pathname);
+  }
+}
+
+function showSetPassword(mode) {
+  $('#login').style.display = 'none';
+  $('#app').style.display = 'none';
+  const box = document.getElementById('setPassword');
+  if (box) box.style.display = 'block';
+  $('#setPasswordTitle').textContent =
+    mode === 'recovery' ? 'Restablecer contraseña' : 'Definí tu contraseña';
+  $('#setPasswordSub').textContent =
+    mode === 'recovery'
+      ? 'Ingresá una nueva clave para tu cuenta.'
+      : 'Tu invitación es válida. Creá una contraseña para entrar al Admin.';
+  $('#out').style.display = '';
+}
+
+async function handleInviteOrRecovery() {
+  const { type, access_token, refresh_token } = getAuthParamsFromUrl();
+  if (!['invite', 'recovery', 'signup'].includes(type) || !access_token) {
+    return false;
+  }
+
+  const { error } = await sb.auth.setSession({
+    access_token,
+    refresh_token: refresh_token || '',
+  });
+  if (error) {
+    clearAuthHash();
+    $('#login').style.display = 'block';
+    $('#lerr').textContent = 'El link expiró o no es válido. Pedí una nueva invitación o reset.';
+    return true;
+  }
+
+  clearAuthHash();
+  showSetPassword(type === 'recovery' ? 'recovery' : 'invite');
+  return true;
+}
+
 async function boot() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return;
   USER_EMAIL = (session.user.email || '').toLowerCase();
+
+  // Si llegó por invitación/recovery y aún no definió clave, no abrir el panel
+  // (detectamos flag en sessionStorage)
+  if (sessionStorage.getItem('sucredito_must_set_password') === '1') {
+    showSetPassword(sessionStorage.getItem('sucredito_pw_mode') || 'invite');
+    return;
+  }
+
   const { data: adm } = await sb.from('admins').select('rol').eq('email', session.user.email).maybeSingle();
   if (!adm) {
-    // try lowercase match
     const { data: adm2 } = await sb.from('admins').select('rol').ilike('email', USER_EMAIL).maybeSingle();
     if (!adm2) {
       await sb.auth.signOut();
@@ -607,6 +676,8 @@ async function boot() {
   if (!['admin', 'editor', 'proveedor'].includes(ROL)) ROL = 'editor';
 
   $('#login').style.display = 'none';
+  const sp = document.getElementById('setPassword');
+  if (sp) sp.style.display = 'none';
   $('#app').style.display = 'block';
   $('#out').style.display = '';
   $('#who').textContent = USER_EMAIL;
@@ -624,8 +695,56 @@ $('#go').onclick = async () => {
   try { await boot(); } catch (e) { $('#lerr').textContent = e.message; }
 };
 $('#pw').onkeydown = e => { if (e.key === 'Enter') $('#go').click(); };
-$('#out').onclick = async () => { await sb.auth.signOut(); location.reload(); };
-boot().catch(() => {});
+$('#out').onclick = async () => {
+  sessionStorage.removeItem('sucredito_must_set_password');
+  sessionStorage.removeItem('sucredito_pw_mode');
+  await sb.auth.signOut();
+  location.href = location.pathname;
+};
+
+if ($('#setPwBtn')) $('#setPwBtn').onclick = async () => {
+  $('#setPwErr').textContent = '';
+  const p1 = ($('#newPw1').value || '');
+  const p2 = ($('#newPw2').value || '');
+  if (p1.length < 6) {
+    $('#setPwErr').textContent = 'Mínimo 6 caracteres.';
+    return;
+  }
+  if (p1 !== p2) {
+    $('#setPwErr').textContent = 'Las contraseñas no coinciden.';
+    return;
+  }
+  $('#setPwBtn').disabled = true;
+  try {
+    const { error } = await sb.auth.updateUser({ password: p1 });
+    if (error) throw error;
+    sessionStorage.removeItem('sucredito_must_set_password');
+    sessionStorage.removeItem('sucredito_pw_mode');
+    alert('Contraseña guardada. Ya podés usar el panel.');
+    const sp = document.getElementById('setPassword');
+    if (sp) sp.style.display = 'none';
+    await boot();
+  } catch (e) {
+    $('#setPwErr').textContent = e.message || String(e);
+  }
+  $('#setPwBtn').disabled = false;
+};
+
+// Arranque: invitación/reset primero, después sesión normal
+(async () => {
+  try {
+    const { type, access_token } = getAuthParamsFromUrl();
+    if (['invite', 'recovery', 'signup'].includes(type) && access_token) {
+      sessionStorage.setItem('sucredito_must_set_password', '1');
+      sessionStorage.setItem('sucredito_pw_mode', type === 'recovery' ? 'recovery' : 'invite');
+      const handled = await handleInviteOrRecovery();
+      if (handled) return;
+    }
+    await boot();
+  } catch (e) {
+    console.warn(e);
+  }
+})();
 
 document.querySelectorAll('.tabs button').forEach(b => {
   b.onclick = () => {
