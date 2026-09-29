@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" href="favicon-32.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<style>a
+<style>
 *{box-sizing:border-box}
 body{margin:0;font:15px Inter,system-ui,sans-serif;background:#f4f5f7;color:#171717;-webkit-tap-highlight-color:transparent}
 header{background:#ffee00;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;font-weight:800;position:sticky;top:0;z-index:20}
@@ -575,22 +575,71 @@ async function logAudit(accion, producto_id, detalle) {
 
 
 /* ===================== CAMBIOS PENDIENTES ===================== */
-function normCompare(v) {
+function normText(v) {
   if (v === null || v === undefined) return '';
-  if (typeof v === 'object') {
-    try { return JSON.stringify(v); } catch (e) { return String(v); }
-  }
-  return String(v);
+  return String(v).trim();
+}
+
+function normNum(v) {
+  const n = numberValue(v);
+  return Number.isFinite(n) ? String(n) : '0';
+}
+
+/**
+ * Comparación SOLO de lo visible en tienda.
+ * Sin spec1..5 / extras / specs[]: entre borrador y live se mapean distinto
+ * y generaban 50+ falsos "modificados".
+ */
+function productPublicShape(p) {
+  if (!p) return null;
+  const options = normalizeOptions(p).map(o => ({
+    cuotas: Number(o.cuotas) || 0,
+    valor_cuota: Math.round(Number(o.valor_cuota) || 0)
+  })).sort((a, b) => a.cuotas - b.cuotas);
+  const primary = options.length ? primaryOption(options) : { cuotas: 0, valor_cuota: 0 };
+
+  let imagen = normText(p.imagen);
+  try {
+    if (imagen) {
+      const u = new URL(imagen, 'https://x.local');
+      const path = (u.pathname || '').replace(/^\/+/, '');
+      imagen = path.split('/').pop() || path || imagen;
+    }
+  } catch (_) {}
+
+  return {
+    categoria: normText(p.categoria).toLowerCase(),
+    marca: normText(p.marca).toLowerCase(),
+    nombre: normText(p.nombre).toLowerCase(),
+    precio: normNum(p.precio),
+    cuotas_opciones: options,
+    cuotas: options.length ? '' : normNum(p.cuotas || primary.cuotas),
+    valor_cuota: options.length ? '' : normNum(p.valor_cuota || primary.valor_cuota),
+    badge: normText(p.badge).toLowerCase(),
+    imagen,
+    stock: String(Math.max(0, parseInt(String(p.stock), 10) || 0)),
+    activo: active(p.activo) ? '1' : '0'
+  };
 }
 
 function productFingerprint(p) {
-  const keys = [
-    'categoria','marca','nombre','precio','cuotas','valor_cuota','cuotas_opciones',
-    'badge','imagen','spec1','spec2','spec3','spec4','spec5',
-    'extra1_label','extra1_value','extra2_label','extra2_value',
-    'stock','activo','creado_por'
-  ];
-  return keys.map(k => k + '=' + normCompare(p[k])).join('|');
+  const shape = productPublicShape(p);
+  if (!shape) return '';
+  try { return JSON.stringify(shape); } catch (e) { return String(shape); }
+}
+
+/** Lista de campos distintos entre borrador y live (para el aviso). */
+function productDiffFields(draft, live) {
+  const a = productPublicShape(draft) || {};
+  const b = productPublicShape(live) || {};
+  const keys = Object.keys(a);
+  const diffs = [];
+  for (const k of keys) {
+    const va = JSON.stringify(a[k] ?? '');
+    const vb = JSON.stringify(b[k] ?? '');
+    if (va !== vb) diffs.push(k);
+  }
+  return diffs;
 }
 
 async function refreshPendingChanges() {
@@ -602,15 +651,22 @@ async function refreshPendingChanges() {
   try {
     const { data: draft, error: e1 } = await sb.from('productos_borrador').select('*');
     if (e1) throw e1;
-    const { data: live, error: e2 } = await sb.from('productos').select('*');
-    if (e2) throw e2;
+    let live = [];
+    try {
+      const liveRes = await sb.from('productos').select('*');
+      if (liveRes.error) throw liveRes.error;
+      live = liveRes.data || [];
+    } catch (eLive) {
+      console.warn('productos live (ignorado):', eLive.message || eLive);
+    }
 
     const liveMap = {};
-    (live || []).forEach(p => { liveMap[String(p.id)] = p; });
+    live.forEach(p => { liveMap[String(p.id)] = p; });
 
     let drafts = draft || [];
     if (isProveedor()) {
-      drafts = drafts.filter(p => String(p.creado_por || '').toLowerCase() === USER_EMAIL);
+      const me = String(USER_EMAIL || '').toLowerCase();
+      drafts = drafts.filter(p => String(p.creado_por || '').toLowerCase() === me);
     }
 
     const nuevos = [];
@@ -623,6 +679,7 @@ async function refreshPendingChanges() {
       if (!L) {
         nuevos.push(d);
       } else if (productFingerprint(d) !== productFingerprint(L)) {
+        d.__diffFields = productDiffFields(d, L);
         modificados.push(d);
       }
     });
@@ -668,8 +725,12 @@ async function refreshPendingChanges() {
         (p.creado_por ? ' <span class="muted">(' + esc(p.creado_por) + ')</span>' : '') + '</li>');
     });
     modificados.slice(0, 8).forEach(p => {
+      const diff = (p.__diffFields && p.__diffFields.length)
+        ? ' <span class="muted">[' + esc(p.__diffFields.join(', ')) + ']</span>'
+        : '';
       items.push('<li><b>Modificado:</b> ' + esc(p.id) + ' · ' + esc((p.marca || '') + ' ' + (p.nombre || '')) +
-        (p.creado_por ? ' <span class="muted">(' + esc(p.creado_por) + ')</span>' : '') + '</li>');
+        (p.creado_por ? ' <span class="muted">(' + esc(p.creado_por) + ')</span>' : '') +
+        diff + '</li>');
     });
     eliminados.slice(0, 8).forEach(p => {
       items.push('<li><b>Eliminado en borrador:</b> ' + esc(p.id) + ' · ' + esc((p.marca || '') + ' ' + (p.nombre || '')) + '</li>');
@@ -718,17 +779,36 @@ function applyRoleUI() {
 }
 
 async function load() {
-  await rpc('preparar_borrador');
+  // preparar_borrador lanza "Sin permiso" para editor/proveedor (y a veces falla).
+  // Nunca debe bloquear el panel ni el guardado.
+  try {
+    await rpc('preparar_borrador');
+  } catch (e) {
+    console.warn('preparar_borrador (ignorado):', e.message || e);
+  }
+
   const a = await sb.from('productos_borrador').select('*').order('nombre');
   if (a.error) throw a.error;
   DATA = a.data || [];
-  const c = await sb.from('categorias_borrador').select('*').order('orden').order('nombre');
-  if (c.error) throw c.error;
-  CATS = c.data || [];
+
+  // Categorías: lectura para todos los roles (asignar al crear/editar producto)
+  try {
+    const c = await sb.from('categorias_borrador').select('*').order('orden').order('nombre');
+    if (c.error) throw c.error;
+    CATS = c.data || [];
+  } catch (e) {
+    console.warn('categorias_borrador (ignorado):', e.message || e);
+    if (!Array.isArray(CATS)) CATS = [];
+  }
+
   drawCatFilter();
   draw();
   drawCats();
-  await refreshPendingChanges();
+  try {
+    await refreshPendingChanges();
+  } catch (e) {
+    console.warn('refreshPendingChanges (ignorado):', e.message || e);
+  }
 }
 
 function drawCatFilter() {
@@ -1267,12 +1347,25 @@ $('#frm').onsubmit = async e => {
     p.precio = Math.max(0, numberValue(f.get('precio')));
     p.activo = !!f.get('activo');
 
-    if (!p.id.trim()) return $('#ferr').textContent = 'Falta el ID';
-    if (!p.nombre.trim()) return $('#ferr').textContent = 'Falta el nombre';
+    if (!p.id.trim()) {
+      $('#ferr').textContent = 'Falta el ID';
+      setSaveProgress('idle');
+      setProductSaving(false);
+      return;
+    }
+    if (!p.nombre.trim()) {
+      $('#ferr').textContent = 'Falta el nombre';
+      setSaveProgress('idle');
+      setProductSaving(false);
+      return;
+    }
 
     const existing = DATA.find(x => String(x.id) === String(p.id.trim()));
     if (existing && !canEditProduct(existing)) {
-      return $('#ferr').textContent = 'No tenés permiso para editar este producto.';
+      $('#ferr').textContent = 'No tenés permiso para editar este producto.';
+      setSaveProgress('idle');
+      setProductSaving(false);
+      return;
     }
 
     if (existing) {
@@ -1283,7 +1376,12 @@ $('#frm').onsubmit = async e => {
     }
 
     const options = getFinanceOptions();
-    if (!options.length) return $('#ferr').textContent = 'Agregá al menos una opción de financiación.';
+    if (!options.length) {
+      $('#ferr').textContent = 'Agregá al menos una opción de financiación (cuotas + valor).';
+      setSaveProgress('idle');
+      setProductSaving(false);
+      return;
+    }
     p.cuotas_opciones = options;
     const primary = primaryOption(options);
     p.cuotas = primary.cuotas;
@@ -1294,17 +1392,39 @@ $('#frm').onsubmit = async e => {
       id: p.id.trim(),
       updated_at: new Date().toISOString()
     });
-    if (error) throw error;
+    if (error) {
+      const msg = error.message || String(error);
+      if (/row-level security|rls|permission denied|42501|new row violates|sin permiso/i.test(msg)) {
+        throw new Error(
+          'Sin permiso para guardar (política RLS en productos_borrador). ' +
+          'El rol editor/proveedor necesita INSERT/UPDATE. Detalle: ' + msg
+        );
+      }
+      throw error;
+    }
 
-    await logAudit(existing ? 'editar_producto' : 'crear_producto', p.id.trim(), p.marca + ' ' + p.nombre);
-    await load();
+    try {
+      await logAudit(existing ? 'editar_producto' : 'crear_producto', p.id.trim(), (p.marca || '') + ' ' + (p.nombre || ''));
+    } catch (auditErr) {
+      console.warn('Auditoría (ignorada):', auditErr.message || auditErr);
+    }
+
+    // El producto ya está guardado: si load falla (preparar_borrador), no marcar error
+    try {
+      await load();
+    } catch (loadErr) {
+      console.warn('load tras guardar (ignorado):', loadErr.message || loadErr);
+    }
+
     PRODUCT_DIRTY = false;
-    setSaveProgress('done','Cambios guardados correctamente.');
+    setSaveProgress('done', 'Cambios guardados correctamente.');
     await new Promise(r => setTimeout(r, 550));
     $('#dlg').close();
   } catch (x) {
-    $('#ferr').textContent = x.message;
-    setSaveProgress('error','No se pudieron guardar los cambios.');
+    const msg = x.message || String(x);
+    $('#ferr').textContent = msg;
+    setSaveProgress('error', 'No se pudieron guardar los cambios.');
+    try { $('#ferr').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
   } finally {
     setProductSaving(false);
   }
