@@ -1404,6 +1404,30 @@ async function hist() {
 }
 
 /* ===================== USUARIOS (solo admin) ===================== */
+async function callUserAction(action, email, rol) {
+  const { data: sessionData } = await sb.auth.getSession();
+  const token = sessionData?.session?.access_token;
+  if (!token) throw new Error('Sesión expirada. Volvé a entrar.');
+  const redirectTo = location.href.split('#')[0];
+  const res = await fetch(SB_URL + '/functions/v1/invitar_usuario', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + token,
+      apikey: SB_KEY,
+    },
+    body: JSON.stringify({
+      action,
+      email,
+      rol: rol || undefined,
+      redirectTo,
+    }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error || ('Error HTTP ' + res.status));
+  return json;
+}
+
 async function loadUsers() {
   if (!isAdmin()) return;
   const q = ($('#userQ')?.value || '').toLowerCase().trim();
@@ -1435,7 +1459,8 @@ async function loadUsers() {
       </td>
       <td style="overflow:visible;white-space:normal">
         <button type="button" class="btn small" data-save-rol="${esc(email)}">Guardar rol</button>
-        <button type="button" class="btn small" data-del-user="${esc(email)}" ${isSelf?'disabled':''}>Quitar acceso</button>
+        <button type="button" class="btn small" data-reset-user="${esc(email)}">Reset clave</button>
+        <button type="button" class="btn small" data-del-user="${esc(email)}" ${isSelf?'disabled':''}>Eliminar</button>
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="3" class="empty">Sin usuarios</td></tr>';
@@ -1447,22 +1472,51 @@ async function loadUsers() {
       const rol = sel?.value;
       if (!rol) return;
       if (!confirm('¿Cambiar rol de ' + email + ' a ' + rol + '?')) return;
-      const { error } = await sb.from('admins').upsert({ email, rol });
-      if (error) return alert(error.message);
-      await logAudit('cambiar_rol', null, email + ' → ' + rol);
-      await loadUsers();
-      alert('Rol actualizado.');
+      try {
+        // Preferimos Edge Function si está; si falla por rol-only, upsert local
+        try {
+          await callUserAction('invite', email, rol);
+        } catch (e) {
+          const { error } = await sb.from('admins').upsert({ email, rol });
+          if (error) throw error;
+        }
+        await logAudit('cambiar_rol', null, email + ' → ' + rol);
+        await loadUsers();
+        alert('Rol actualizado.');
+      } catch (e) {
+        alert(e.message || String(e));
+      }
+    };
+  });
+
+  document.querySelectorAll('[data-reset-user]').forEach(btn => {
+    btn.onclick = async () => {
+      const email = btn.getAttribute('data-reset-user');
+      if (!confirm('¿Enviar email para que ' + email + ' redefina su contraseña?')) return;
+      try {
+        const json = await callUserAction('reset', email);
+        alert(json.message || 'Email de restablecimiento enviado.');
+      } catch (e) {
+        alert(e.message || String(e));
+      }
     };
   });
 
   document.querySelectorAll('[data-del-user]').forEach(btn => {
     btn.onclick = async () => {
       const email = btn.getAttribute('data-del-user');
-      if (!confirm('¿Quitar acceso de ' + email + '?\nYa no podrá entrar al Admin. El login en Auth puede seguir existiendo.')) return;
-      const { error } = await sb.from('admins').delete().eq('email', email);
-      if (error) return alert(error.message);
-      await logAudit('quitar_acceso', null, email);
-      await loadUsers();
+      if (!confirm(
+        '¿ELIMINAR por completo a ' + email + '?\n\n' +
+        '• Se borra de Auth (ya no puede iniciar sesión)\n' +
+        '• Se quita de la tabla admins (sin acceso al panel)'
+      )) return;
+      try {
+        const json = await callUserAction('delete', email);
+        alert(json.message || 'Usuario eliminado.');
+        await loadUsers();
+      } catch (e) {
+        alert(e.message || String(e));
+      }
     };
   });
 }
@@ -1483,24 +1537,7 @@ if ($('#invSend')) $('#invSend').onclick = async () => {
 
   $('#invSend').disabled = true;
   try {
-    const { data: sessionData } = await sb.auth.getSession();
-    const token = sessionData?.session?.access_token;
-    if (!token) throw new Error('Sesión expirada. Volvé a entrar.');
-
-    const redirectTo = location.href.split('#')[0];
-
-    const res = await fetch(SB_URL + '/functions/v1/invitar_usuario', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + token,
-        apikey: SB_KEY,
-      },
-      body: JSON.stringify({ email, rol, redirectTo }),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(json.error || ('Error HTTP ' + res.status));
-
+    const json = await callUserAction('invite', email, rol);
     $('#invOk').style.display = 'block';
     $('#invOk').textContent = json.message || 'Invitación enviada.';
     $('#invEmail').value = '';
