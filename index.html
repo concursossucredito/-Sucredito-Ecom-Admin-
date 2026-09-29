@@ -208,6 +208,7 @@ code{background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px}
       <button data-t="imp" class="btn" id="tabImp">Importar Excel</button>
       <button data-t="imgs" class="btn">Subir imágenes</button>
       <button data-t="his" class="btn" id="tabHis">Historial</button>
+      <button data-t="users" class="btn" id="tabUsers" style="display:none">Usuarios</button>
     </div>
 
     <section class="sec on card" id="prod">
@@ -301,6 +302,56 @@ code{background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:12px}
             </tr>
           </thead>
           <tbody id="hrows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sec card" id="users">
+      <div class="bar">
+        <div>
+          <h3 style="margin:0">Usuarios</h3>
+          <div class="muted">Invitá por email. Cada uno define su contraseña desde el correo de Supabase.</div>
+        </div>
+      </div>
+
+      <div style="border:1px solid #eee;border-radius:12px;padding:14px;margin-bottom:14px;background:#fafafa">
+        <h4 style="margin:0 0 10px">Invitar usuario</h4>
+        <div class="g">
+          <div>
+            <label>Email</label>
+            <input type="email" id="invEmail" placeholder="usuario@empresa.com" autocomplete="off">
+          </div>
+          <div>
+            <label>Rol</label>
+            <select id="invRol">
+              <option value="proveedor">proveedor</option>
+              <option value="editor">editor</option>
+              <option value="admin">admin</option>
+            </select>
+          </div>
+        </div>
+        <p class="muted" style="margin-top:8px">
+          Se envía un mail de invitación. Si el email ya existe en Auth, solo se actualiza el rol en <code>admins</code>.
+        </p>
+        <p class="no" id="invErr"></p>
+        <p class="ok" id="invOk" style="display:none"></p>
+        <button class="btn red" id="invSend" style="margin-top:8px;min-height:46px">Enviar invitación</button>
+      </div>
+
+      <div class="bar">
+        <input id="userQ" placeholder="Buscar por email o rol...">
+        <button class="btn" id="usersReload" type="button">Actualizar lista</button>
+      </div>
+      <div class="wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Rol</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="userRows"></tbody>
         </table>
       </div>
     </section>
@@ -511,6 +562,8 @@ function applyRoleUI() {
   $('#tabCats').style.display = canManageCats() ? '' : 'none';
   $('#tabImp').style.display = canImport() ? '' : 'none';
   $('#tabHis').style.display = canSeeAllHistory() || isProveedor() ? '' : 'none';
+  const tabUsers = document.getElementById('tabUsers');
+  if (tabUsers) tabUsers.style.display = isAdmin() ? '' : 'none';
 }
 
 async function load() {
@@ -580,6 +633,7 @@ document.querySelectorAll('.tabs button').forEach(b => {
     document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
     document.querySelectorAll('.sec').forEach(s => s.classList.toggle('on', s.id === b.dataset.t));
     if (b.dataset.t === 'his') hist();
+    if (b.dataset.t === 'users') loadUsers();
   };
 });
 
@@ -1348,6 +1402,114 @@ async function hist() {
     $('#hrows').innerHTML = `<tr><td colspan="6" class="no">${esc(e.message)}</td></tr>`;
   }
 }
+
+/* ===================== USUARIOS (solo admin) ===================== */
+async function loadUsers() {
+  if (!isAdmin()) return;
+  const q = ($('#userQ')?.value || '').toLowerCase().trim();
+  const { data, error } = await sb.from('admins').select('email,rol').order('email');
+  if (error) {
+    $('#userRows').innerHTML = `<tr><td colspan="3" class="no">${esc(error.message)}</td></tr>`;
+    return;
+  }
+  let rows = data || [];
+  if (q) {
+    rows = rows.filter(r =>
+      String(r.email).toLowerCase().includes(q) ||
+      String(r.rol).toLowerCase().includes(q)
+    );
+  }
+  $('#userRows').innerHTML = rows.map(r => {
+    const email = String(r.email || '');
+    const rol = String(r.rol || '').toLowerCase();
+    const isSelf = email.toLowerCase() === USER_EMAIL;
+    return `
+    <tr>
+      <td style="white-space:normal;word-break:break-all">${esc(email)}</td>
+      <td>
+        <select data-email="${esc(email)}" class="user-rol-select" style="width:auto;min-width:130px;padding:8px">
+          ${['admin','editor','proveedor'].map(x =>
+            `<option value="${x}" ${rol===x?'selected':''}>${x}</option>`
+          ).join('')}
+        </select>
+      </td>
+      <td style="overflow:visible;white-space:normal">
+        <button type="button" class="btn small" data-save-rol="${esc(email)}">Guardar rol</button>
+        <button type="button" class="btn small" data-del-user="${esc(email)}" ${isSelf?'disabled':''}>Quitar acceso</button>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="3" class="empty">Sin usuarios</td></tr>';
+
+  document.querySelectorAll('[data-save-rol]').forEach(btn => {
+    btn.onclick = async () => {
+      const email = btn.getAttribute('data-save-rol');
+      const sel = document.querySelector(`select.user-rol-select[data-email="${CSS.escape(email)}"]`);
+      const rol = sel?.value;
+      if (!rol) return;
+      if (!confirm('¿Cambiar rol de ' + email + ' a ' + rol + '?')) return;
+      const { error } = await sb.from('admins').upsert({ email, rol });
+      if (error) return alert(error.message);
+      await logAudit('cambiar_rol', null, email + ' → ' + rol);
+      await loadUsers();
+      alert('Rol actualizado.');
+    };
+  });
+
+  document.querySelectorAll('[data-del-user]').forEach(btn => {
+    btn.onclick = async () => {
+      const email = btn.getAttribute('data-del-user');
+      if (!confirm('¿Quitar acceso de ' + email + '?\nYa no podrá entrar al Admin. El login en Auth puede seguir existiendo.')) return;
+      const { error } = await sb.from('admins').delete().eq('email', email);
+      if (error) return alert(error.message);
+      await logAudit('quitar_acceso', null, email);
+      await loadUsers();
+    };
+  });
+}
+
+if ($('#usersReload')) $('#usersReload').onclick = loadUsers;
+if ($('#userQ')) $('#userQ').oninput = () => loadUsers();
+
+if ($('#invSend')) $('#invSend').onclick = async () => {
+  if (!isAdmin()) return alert('Solo un admin puede invitar.');
+  const email = ($('#invEmail').value || '').trim().toLowerCase();
+  const rol = ($('#invRol').value || '').trim().toLowerCase();
+  $('#invErr').textContent = '';
+  $('#invOk').style.display = 'none';
+  if (!email || !email.includes('@')) {
+    $('#invErr').textContent = 'Email inválido';
+    return;
+  }
+
+  $('#invSend').disabled = true;
+  try {
+    const { data: sessionData } = await sb.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) throw new Error('Sesión expirada. Volvé a entrar.');
+
+    const redirectTo = location.href.split('#')[0];
+
+    const res = await fetch(SB_URL + '/functions/v1/invitar_usuario', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + token,
+        apikey: SB_KEY,
+      },
+      body: JSON.stringify({ email, rol, redirectTo }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || ('Error HTTP ' + res.status));
+
+    $('#invOk').style.display = 'block';
+    $('#invOk').textContent = json.message || 'Invitación enviada.';
+    $('#invEmail').value = '';
+    await loadUsers();
+  } catch (e) {
+    $('#invErr').textContent = e.message || String(e);
+  }
+  $('#invSend').disabled = false;
+};
 </script>
 </body>
 </html>
