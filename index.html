@@ -575,23 +575,52 @@ async function logAudit(accion, producto_id, detalle) {
 
 
 /* ===================== CAMBIOS PENDIENTES ===================== */
-function normCompare(v) {
+function normText(v) {
   if (v === null || v === undefined) return '';
-  if (typeof v === 'object') {
-    try { return JSON.stringify(v); } catch (e) { return String(v); }
-  }
-  return String(v);
+  return String(v).trim();
 }
 
+function normNum(v) {
+  const n = numberValue(v);
+  return Number.isFinite(n) ? String(n) : '0';
+}
+
+/** Unifica forma de draft y live (specs[] vs spec1..5, JSON de cuotas, bools, nulls). */
 function productFingerprint(p) {
-  // creado_por NO entra: es solo operativo del Admin, no cambia la tienda pública
-  const keys = [
-    'categoria','marca','nombre','precio','cuotas','valor_cuota','cuotas_opciones',
-    'badge','imagen','spec1','spec2','spec3','spec4','spec5',
-    'extra1_label','extra1_value','extra2_label','extra2_value',
-    'stock','activo'
-  ];
-  return keys.map(k => k + '=' + normCompare(p[k])).join('|');
+  if (!p) return '';
+  // specs: live a veces trae array; draft usa spec1..spec5
+  let specs = [1, 2, 3, 4, 5].map(i => normText(p['spec' + i]));
+  if (specs.every(s => !s) && Array.isArray(p.specs)) {
+    specs = [0, 1, 2, 3, 4].map(i => normText(p.specs[i]));
+  }
+  const options = normalizeOptions(p).map(o => ({
+    cuotas: Number(o.cuotas) || 0,
+    valor_cuota: Number(o.valor_cuota) || 0
+  }));
+  // Solo campos que afectan la tienda pública (no creado_por / updated_at)
+  const payload = {
+    categoria: normText(p.categoria).toLowerCase(),
+    marca: normText(p.marca),
+    nombre: normText(p.nombre),
+    precio: normNum(p.precio),
+    cuotas: normNum(p.cuotas || (options.length ? primaryOption(options).cuotas : 0)),
+    valor_cuota: normNum(p.valor_cuota || (options.length ? primaryOption(options).valor_cuota : 0)),
+    cuotas_opciones: options,
+    badge: normText(p.badge),
+    imagen: normText(p.imagen),
+    specs,
+    extra1_label: normText(p.extra1_label),
+    extra1_value: normText(p.extra1_value),
+    extra2_label: normText(p.extra2_label),
+    extra2_value: normText(p.extra2_value),
+    stock: String(Math.max(0, parseInt(p.stock, 10) || 0)),
+    activo: active(p.activo) ? '1' : '0'
+  };
+  try {
+    return JSON.stringify(payload);
+  } catch (e) {
+    return String(payload);
+  }
 }
 
 async function refreshPendingChanges() {
