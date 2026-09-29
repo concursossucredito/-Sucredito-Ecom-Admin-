@@ -603,11 +603,17 @@ async function refreshPendingChanges() {
   try {
     const { data: draft, error: e1 } = await sb.from('productos_borrador').select('*');
     if (e1) throw e1;
-    const { data: live, error: e2 } = await sb.from('productos').select('*');
-    if (e2) throw e2;
+    let live = [];
+    try {
+      const liveRes = await sb.from('productos').select('*');
+      if (liveRes.error) throw liveRes.error;
+      live = liveRes.data || [];
+    } catch (eLive) {
+      console.warn('productos live (ignorado):', eLive.message || eLive);
+    }
 
     const liveMap = {};
-    (live || []).forEach(p => { liveMap[String(p.id)] = p; });
+    live.forEach(p => { liveMap[String(p.id)] = p; });
 
     let drafts = draft || [];
     if (isProveedor()) {
@@ -719,17 +725,36 @@ function applyRoleUI() {
 }
 
 async function load() {
-  await rpc('preparar_borrador');
+  // preparar_borrador lanza "Sin permiso" para editor/proveedor (y a veces falla).
+  // Nunca debe bloquear el panel ni el guardado.
+  try {
+    await rpc('preparar_borrador');
+  } catch (e) {
+    console.warn('preparar_borrador (ignorado):', e.message || e);
+  }
+
   const a = await sb.from('productos_borrador').select('*').order('nombre');
   if (a.error) throw a.error;
   DATA = a.data || [];
-  const c = await sb.from('categorias_borrador').select('*').order('orden').order('nombre');
-  if (c.error) throw c.error;
-  CATS = c.data || [];
+
+  // Categorías: lectura para todos los roles (asignar al crear/editar producto)
+  try {
+    const c = await sb.from('categorias_borrador').select('*').order('orden').order('nombre');
+    if (c.error) throw c.error;
+    CATS = c.data || [];
+  } catch (e) {
+    console.warn('categorias_borrador (ignorado):', e.message || e);
+    if (!Array.isArray(CATS)) CATS = [];
+  }
+
   drawCatFilter();
   draw();
   drawCats();
-  await refreshPendingChanges();
+  try {
+    await refreshPendingChanges();
+  } catch (e) {
+    console.warn('refreshPendingChanges (ignorado):', e.message || e);
+  }
 }
 
 function drawCatFilter() {
@@ -1268,12 +1293,25 @@ $('#frm').onsubmit = async e => {
     p.precio = Math.max(0, numberValue(f.get('precio')));
     p.activo = !!f.get('activo');
 
-    if (!p.id.trim()) return $('#ferr').textContent = 'Falta el ID';
-    if (!p.nombre.trim()) return $('#ferr').textContent = 'Falta el nombre';
+    if (!p.id.trim()) {
+      $('#ferr').textContent = 'Falta el ID';
+      setSaveProgress('idle');
+      setProductSaving(false);
+      return;
+    }
+    if (!p.nombre.trim()) {
+      $('#ferr').textContent = 'Falta el nombre';
+      setSaveProgress('idle');
+      setProductSaving(false);
+      return;
+    }
 
     const existing = DATA.find(x => String(x.id) === String(p.id.trim()));
     if (existing && !canEditProduct(existing)) {
-      return $('#ferr').textContent = 'No tenés permiso para editar este producto.';
+      $('#ferr').textContent = 'No tenés permiso para editar este producto.';
+      setSaveProgress('idle');
+      setProductSaving(false);
+      return;
     }
 
     if (existing) {
@@ -1284,7 +1322,12 @@ $('#frm').onsubmit = async e => {
     }
 
     const options = getFinanceOptions();
-    if (!options.length) return $('#ferr').textContent = 'Agregá al menos una opción de financiación.';
+    if (!options.length) {
+      $('#ferr').textContent = 'Agregá al menos una opción de financiación (cuotas + valor).';
+      setSaveProgress('idle');
+      setProductSaving(false);
+      return;
+    }
     p.cuotas_opciones = options;
     const primary = primaryOption(options);
     p.cuotas = primary.cuotas;
@@ -1295,17 +1338,39 @@ $('#frm').onsubmit = async e => {
       id: p.id.trim(),
       updated_at: new Date().toISOString()
     });
-    if (error) throw error;
+    if (error) {
+      const msg = error.message || String(error);
+      if (/row-level security|rls|permission denied|42501|new row violates|sin permiso/i.test(msg)) {
+        throw new Error(
+          'Sin permiso para guardar (política RLS en productos_borrador). ' +
+          'El rol editor/proveedor necesita INSERT/UPDATE. Detalle: ' + msg
+        );
+      }
+      throw error;
+    }
 
-    await logAudit(existing ? 'editar_producto' : 'crear_producto', p.id.trim(), p.marca + ' ' + p.nombre);
-    await load();
+    try {
+      await logAudit(existing ? 'editar_producto' : 'crear_producto', p.id.trim(), (p.marca || '') + ' ' + (p.nombre || ''));
+    } catch (auditErr) {
+      console.warn('Auditoría (ignorada):', auditErr.message || auditErr);
+    }
+
+    // El producto ya está guardado: si load falla (preparar_borrador), no marcar error
+    try {
+      await load();
+    } catch (loadErr) {
+      console.warn('load tras guardar (ignorado):', loadErr.message || loadErr);
+    }
+
     PRODUCT_DIRTY = false;
-    setSaveProgress('done','Cambios guardados correctamente.');
+    setSaveProgress('done', 'Cambios guardados correctamente.');
     await new Promise(r => setTimeout(r, 550));
     $('#dlg').close();
   } catch (x) {
-    $('#ferr').textContent = x.message;
-    setSaveProgress('error','No se pudieron guardar los cambios.');
+    const msg = x.message || String(x);
+    $('#ferr').textContent = msg;
+    setSaveProgress('error', 'No se pudieron guardar los cambios.');
+    try { $('#ferr').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
   } finally {
     setProductSaving(false);
   }
