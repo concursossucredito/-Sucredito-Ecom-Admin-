@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" href="favicon-32.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<style>a
+<style>
 *{box-sizing:border-box}
 body{margin:0;font:15px Inter,system-ui,sans-serif;background:#f4f5f7;color:#171717;-webkit-tap-highlight-color:transparent}
 header{background:#ffee00;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;font-weight:800;position:sticky;top:0;z-index:20}
@@ -584,11 +584,12 @@ function normCompare(v) {
 }
 
 function productFingerprint(p) {
+  // creado_por NO entra: es solo operativo del Admin, no cambia la tienda pública
   const keys = [
     'categoria','marca','nombre','precio','cuotas','valor_cuota','cuotas_opciones',
     'badge','imagen','spec1','spec2','spec3','spec4','spec5',
     'extra1_label','extra1_value','extra2_label','extra2_value',
-    'stock','activo','creado_por'
+    'stock','activo'
   ];
   return keys.map(k => k + '=' + normCompare(p[k])).join('|');
 }
