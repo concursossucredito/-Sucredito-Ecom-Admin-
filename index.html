@@ -264,6 +264,41 @@ code{background:var(--surface-2);padding:2px 7px;border-radius:5px;font-size:12p
 .badge-vis.yes{background:var(--ok-soft);color:#065f46}
 .badge-vis.no{background:var(--danger-soft);color:#991b1b}
 .hint-reorder{font-size:12px;color:var(--muted);margin:0 0 10px}
+
+body.dark{
+  --bg:#0b1220;
+  --surface:#111827;
+  --surface-2:#1f2937;
+  --border:#1f2937;
+  --border-strong:#374151;
+  --text:#f1f5f9;
+  --muted:#94a3b8;
+  --muted-2:#64748b;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
+  --shadow-lg:0 10px 40px rgba(0,0,0,.45);
+  --focus:0 0 0 3px rgba(250,204,21,.25);
+}
+body.dark header{
+  background:linear-gradient(180deg,#eab308 0%,#ca8a04 100%);
+}
+body.dark .btn{background:var(--surface-2);color:var(--text);border-color:var(--border-strong)}
+body.dark .btn:hover{background:#374151}
+body.dark .btn.red{background:var(--danger);color:#fff}
+body.dark input,body.dark select,body.dark textarea{background:#0f172a;color:var(--text);border-color:var(--border-strong)}
+body.dark table{background:var(--surface)}
+body.dark tbody tr:hover{background:#1e293b}
+body.dark .tabs{background:var(--surface)}
+body.dark .tabs button.on{background:#f8fafc!important;color:#0f172a!important}
+body.dark .finance-row input,body.dark .feature-box,body.dark .finance-box{background:#0f172a}
+body.dark dialog{background:var(--surface)}
+body.dark .dlg-actions{border-color:var(--border)}
+body.dark .m-card{background:var(--surface)}
+body.dark .cat-row{border-color:var(--border)}
+.cat-row.dragging{opacity:.45}
+.cat-row.drag-over{background:#fef9c3;outline:2px dashed #f59e0b;outline-offset:-2px;border-radius:8px}
+body.dark .cat-row.drag-over{background:#422006}
+.cat-row{cursor:default}
+.cat-row .drag-handle{margin-right:6px}
 @media(max-width:700px){
   header{padding:10px 12px;gap:8px}
   .brand span{font-size:14px}
@@ -317,6 +352,7 @@ code{background:var(--surface-2);padding:2px 7px;border-radius:5px;font-size:12p
     <span id="state" class="pill draft">BORRADOR</span>
     <span id="rolePill" class="pill"></span>
     <span id="who" class="who muted"></span>
+    <button class="btn small ghost" id="themeToggle" type="button" title="Modo oscuro/claro">◐</button>
     <button class="btn small" id="out" style="display:none">Salir</button>
   </div>
 </header>
@@ -410,6 +446,7 @@ code{background:var(--surface-2);padding:2px 7px;border-radius:5px;font-size:12p
         </div>
         <button class="btn red" id="newCat">+ Nueva categoría</button>
       </div>
+      <p class="hint-reorder">Arrastrá ⋮⋮ para ordenar el banner de categorías en la tienda. Menor orden = más a la izquierda / primero.</p>
       <div class="cat-head cat-row desktop-only">
         <span>Nombre</span><span>Orden</span><span>Activa</span><span></span>
       </div>
@@ -1260,6 +1297,84 @@ async function reorderProducts(fromId, toId) {
   }
 }
 
+
+function duplicateProduct(id) {
+  const existing = DATA.find(x => String(x.id) === String(id));
+  if (!existing) return alert('Producto no encontrado');
+  if (!canEditProduct(existing) && !isAdmin() && !isEditor()) {
+    return alert('Sin permiso');
+  }
+  // Abrir formulario de nuevo producto con datos copiados
+  edit('');
+  // Esperar a que el DOM del form esté listo
+  setTimeout(() => {
+    const fields = $('#fields');
+    if (!fields) return;
+    const map = {
+      id: '',
+      categoria: existing.categoria || '',
+      marca: existing.marca || '',
+      nombre: (existing.nombre || '') + ' (copia)',
+      precio: existing.precio || '',
+      badge: existing.badge || '',
+      imagen: existing.imagen || '',
+      stock: existing.stock ?? 0,
+    };
+    Object.keys(map).forEach(k => {
+      const el = fields.querySelector('[name="' + k + '"]');
+      if (el) el.value = map[k];
+    });
+    for (let i = 1; i <= 5; i++) {
+      const el = fields.querySelector('[name="spec' + i + '"]');
+      if (el) el.value = existing['spec' + i] || '';
+    }
+    ['extra1_label','extra1_value','extra2_label','extra2_value'].forEach(k => {
+      const el = fields.querySelector('[name="' + k + '"]');
+      if (el) el.value = existing[k] || '';
+    });
+    const act = fields.querySelector('[name="activo"]');
+    if (act) act.checked = active(existing.activo);
+    // Financiación
+    const list = $('#financeList');
+    if (list) {
+      list.innerHTML = '';
+      const options = normalizeOptions(existing);
+      if (options.length) options.forEach(o => addFinanceOption(o.cuotas, o.valor_cuota));
+      else addFinanceOption();
+      updateFinanceUI();
+    }
+    $('#dt').textContent = 'Duplicar producto';
+    setProductDirty(true);
+    const idInput = fields.querySelector('[name="id"]');
+    if (idInput) { idInput.removeAttribute('readonly'); idInput.focus(); }
+  }, 50);
+}
+window.duplicateProduct = duplicateProduct;
+
+/* Dark mode */
+(function initTheme() {
+  try {
+    if (localStorage.getItem('sucredito_admin_theme') === 'dark') {
+      document.body.classList.add('dark');
+    }
+  } catch (_) {}
+})();
+function toggleTheme() {
+  document.body.classList.toggle('dark');
+  try {
+    localStorage.setItem(
+      'sucredito_admin_theme',
+      document.body.classList.contains('dark') ? 'dark' : 'light'
+    );
+  } catch (_) {}
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const t = document.getElementById('themeToggle');
+  if (t) t.onclick = toggleTheme;
+});
+// por si el script corre al final y DOM ya listo
+if ($('#themeToggle')) $('#themeToggle').onclick = toggleTheme;
+
 function formatQuotaSummary(p) {
   const options = normalizeOptions(p);
   if (!options.length) return '-';
@@ -1306,7 +1421,10 @@ function draw() {
       </td>
       <td class="muted">${esc(p.creado_por || '—')}</td>
       <td><span class="badge-vis ${active(p.activo) ? 'yes' : 'no'}">${active(p.activo) ? 'Visible' : 'Oculto'}</span></td>
-      <td>${can ? `<button class="btn small red" onclick="edit('${esc(p.id)}')">Editar</button>` : ''}</td>
+      <td style="overflow:visible;white-space:normal">
+        ${can ? `<button class="btn small red" onclick="edit('${esc(p.id)}')">Editar</button>
+          <button class="btn small" onclick="duplicateProduct('${esc(p.id)}')" title="Duplicar">Dup</button>` : ''}
+      </td>
     </tr>`;
   }).join('') || '<tr><td colspan="9" class="empty">Sin productos</td></tr>';
   if (canReorder) bindProductDrag();
@@ -1336,6 +1454,7 @@ function draw() {
           <button class="btn small" onclick="moveStock('${esc(p.id)}','sumar')">+</button>
           <button class="btn small" onclick="editStock('${esc(p.id)}')">Stock</button>
           <button class="btn small red" onclick="edit('${esc(p.id)}')">Editar</button>
+          <button class="btn small" onclick="duplicateProduct('${esc(p.id)}')">Dup</button>
         ` : '<span class="muted">Solo lectura</span>'}
       </div>
     </article>`;
@@ -1721,8 +1840,11 @@ function drawCats() {
   if (!canManageCats()) return;
   CATS.sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre));
   $('#catRows').innerHTML = CATS.map(c => `
-    <div class="cat-row">
-      <div><b>${esc(c.nombre)}</b><div class="muted">${esc(c.id)}</div></div>
+    <div class="cat-row" data-cat-id="${esc(c.id)}" draggable="true">
+      <div style="display:flex;align-items:center;gap:6px;min-width:0">
+        <span class="drag-handle" title="Arrastrar">⋮⋮</span>
+        <div style="min-width:0"><b>${esc(c.nombre)}</b><div class="muted">${esc(c.id)}</div></div>
+      </div>
       <input type="number" inputmode="numeric" value="${c.orden}" onchange="catOrder('${esc(c.id)}',this.value)">
       <label style="display:flex;align-items:center;gap:8px">
         <input type="checkbox" ${c.activo ? 'checked' : ''} onchange="catActive('${esc(c.id)}',this.checked)">
@@ -1731,6 +1853,72 @@ function drawCats() {
       <div><button class="btn small" onclick="editCat('${esc(c.id)}')">Editar</button></div>
     </div>
   `).join('') || '<div class="empty">No hay categorías.</div>';
+  bindCatDrag();
+}
+
+let CAT_DRAG_ID = null;
+function bindCatDrag() {
+  const box = $('#catRows');
+  if (!box) return;
+  box.querySelectorAll('.cat-row[data-cat-id]').forEach(row => {
+    row.ondragstart = e => {
+      CAT_DRAG_ID = row.getAttribute('data-cat-id');
+      row.classList.add('dragging');
+      try { e.dataTransfer.setData('text/plain', CAT_DRAG_ID); e.dataTransfer.effectAllowed = 'move'; } catch (_) {}
+    };
+    row.ondragend = () => {
+      row.classList.remove('dragging');
+      box.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
+      CAT_DRAG_ID = null;
+    };
+    row.ondragover = e => {
+      e.preventDefault();
+      if (!CAT_DRAG_ID || CAT_DRAG_ID === row.getAttribute('data-cat-id')) return;
+      box.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
+      row.classList.add('drag-over');
+    };
+    row.ondragleave = () => row.classList.remove('drag-over');
+    row.ondrop = async e => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      const fromId = CAT_DRAG_ID || (e.dataTransfer && e.dataTransfer.getData('text/plain'));
+      const toId = row.getAttribute('data-cat-id');
+      if (!fromId || !toId || fromId === toId) return;
+      await reorderCategories(fromId, toId);
+    };
+  });
+}
+
+async function reorderCategories(fromId, toId) {
+  if (!canManageCats()) return;
+  CATS.sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre));
+  const ids = CATS.map(c => String(c.id));
+  const from = ids.indexOf(String(fromId));
+  const to = ids.indexOf(String(toId));
+  if (from < 0 || to < 0) return;
+  ids.splice(to, 0, ids.splice(from, 1)[0]);
+  const orderMap = {};
+  ids.forEach((id, i) => { orderMap[id] = i; });
+  CATS.forEach(c => {
+    if (orderMap[String(c.id)] !== undefined) c.orden = orderMap[String(c.id)];
+  });
+  drawCats();
+  try {
+    for (const c of CATS) {
+      const { error } = await sb.from('categorias_borrador').upsert({
+        id: c.id,
+        nombre: c.nombre,
+        orden: c.orden,
+        activo: c.activo !== false,
+        updated_at: new Date().toISOString()
+      });
+      if (error) throw error;
+    }
+    await logAudit('reordenar_categorias', null, CATS.length + ' categorias');
+  } catch (e) {
+    alert(e.message || String(e));
+    await load();
+  }
 }
 
 async function saveCat(c) {
