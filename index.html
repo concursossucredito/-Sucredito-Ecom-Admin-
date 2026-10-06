@@ -1929,11 +1929,46 @@ $('#frm').onsubmit = async e => {
     p.cuotas = primary.cuotas;
     p.valor_cuota = primary.valor_cuota;
 
-    const { error } = await sb.from('productos_borrador').upsert({
-      ...p,
+    // Galería: asegurar array limpio (no depender solo del spread)
+    let imgs = normalizeImagenes({ imagen: p.imagen, imagenes: p.imagenes });
+    try {
+      const rawGal = document.getElementById('imagenesJson')?.value;
+      if (rawGal) {
+        const g = JSON.parse(rawGal);
+        if (Array.isArray(g) && g.length) imgs = normalizeImagenes({ imagenes: g, imagen: g[0] });
+      }
+    } catch (e) {}
+    p.imagenes = imgs;
+    p.imagen = imgs[0] || p.imagen || '';
+
+    const payload = {
       id: p.id.trim(),
+      categoria: p.categoria || '',
+      marca: p.marca || '',
+      nombre: p.nombre || '',
+      precio: numberValue(p.precio),
+      cuotas: p.cuotas,
+      valor_cuota: p.valor_cuota,
+      cuotas_opciones: p.cuotas_opciones,
+      badge: p.badge || '',
+      imagen: p.imagen || '',
+      imagenes: p.imagenes || [],
+      spec1: p.spec1 || '',
+      spec2: p.spec2 || '',
+      spec3: p.spec3 || '',
+      spec4: p.spec4 || '',
+      spec5: p.spec5 || '',
+      extra1_label: p.extra1_label || '',
+      extra1_value: p.extra1_value || '',
+      extra2_label: p.extra2_label || '',
+      extra2_value: p.extra2_value || '',
+      stock: Math.max(0, parseInt(p.stock, 10) || 0),
+      activo: active(p.activo),
+      creado_por: p.creado_por || USER_EMAIL,
       updated_at: new Date().toISOString()
-    });
+    };
+
+    const { error } = await sb.from('productos_borrador').upsert(payload);
     if (error) {
       const msg = error.message || String(error);
       if (/row-level security|rls|permission denied|42501|new row violates|sin permiso/i.test(msg)) {
@@ -2434,11 +2469,22 @@ $('#publish').onclick = async () => {
   if (!confirm('¿Publicar el borrador al catálogo público? Este es el OK final.')) return;
   try {
     await rpc('publicar_borrador');
-    // Asegura que el orden del borrador llegue a la tienda (por si publicar_borrador no copia "orden")
     try {
       await rpc('sync_orden_catalogo');
     } catch (eOrd) {
       console.warn('sync_orden_catalogo:', eOrd.message || eOrd);
+    }
+    // Copia imagenes por si publicar_borrador aún no incluye esa columna
+    try {
+      const { data: drafts } = await sb.from('productos_borrador').select('id,imagen,imagenes');
+      for (const d of (drafts || [])) {
+        await sb.from('productos').update({
+          imagen: d.imagen || '',
+          imagenes: Array.isArray(d.imagenes) ? d.imagenes : (d.imagenes || [])
+        }).eq('id', d.id);
+      }
+    } catch (eImg) {
+      console.warn('sync imagenes:', eImg.message || eImg);
     }
     await logAudit('publicar', null, 'Publicación al catálogo');
     await load();
