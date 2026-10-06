@@ -541,8 +541,8 @@ body.dark .cat-row.drag-over{background:#422006;outline-color:#fbbf24}
     <section class="sec card" id="imgs">
       <h3>Subida masiva de imágenes</h3>
       <p class="muted">
-        Nombre del archivo = <b>ID</b> del producto.<br>
-        Ej: <code>67.jpg</code>, <code>110.webp</code>
+        Nombre = <b>ID</b> o <b>ID_2</b>, <b>ID_3</b>…<br>
+        Ej: <code>67.jpg</code> (portada), <code>67_2.jpg</code>, <code>67_3.webp</code>
       </p>
       <div class="notice"><b>Solo actualiza el borrador.</b> Después hay que publicar.</div>
       <div>
@@ -767,6 +767,23 @@ function primaryOption(options) {
   return options.reduce((a, b) => b.cuotas > a.cuotas ? b : a);
 }
 
+
+function normalizeImagenes(p) {
+  let list = [];
+  if (Array.isArray(p?.imagenes)) list = p.imagenes.slice();
+  else if (typeof p?.imagenes === 'string' && p.imagenes.trim()) {
+    try {
+      const parsed = JSON.parse(p.imagenes);
+      if (Array.isArray(parsed)) list = parsed;
+    } catch (e) {}
+  }
+  list = list.map(u => String(u || '').trim()).filter(Boolean);
+  const cover = String(p?.imagen || '').trim();
+  if (cover && !list.includes(cover)) list.unshift(cover);
+  const seen = new Set();
+  return list.filter(u => { if (seen.has(u)) return false; seen.add(u); return true; });
+}
+
 const toDraft = p => {
   const options = normalizeOptions(p);
   const primary = primaryOption(options);
@@ -781,6 +798,7 @@ const toDraft = p => {
     cuotas_opciones: options,
     badge: p.badge || '',
     imagen: p.imagen || '',
+    imagenes: normalizeImagenes(p),
     spec1: p.spec1 || '',
     spec2: p.spec2 || '',
     spec3: p.spec3 || '',
@@ -1730,23 +1748,96 @@ function edit(id) {
   $('#fields').oninput = () => setProductDirty();
   $('#fields').onchange = () => setProductDirty();
 
+  // Galería multi-imagen
   const im = $('#fields [name=imagen]');
-  if (im) {
-    const u = document.createElement('input');
-    u.type = 'file';
-    u.accept = 'image/*';
-    u.style.marginTop = '6px';
-    im.after(u);
-    u.onchange = async () => {
-      const f = u.files[0];
-      if (!f) return;
-      const path = Date.now() + '-' + f.name.replace(/[^\w.]+/g, '_');
-      const { error } = await sb.storage.from('productos').upload(path, f, { upsert: false });
-      if (error) return $('#ferr').textContent = error.message;
-      im.value = sb.storage.from('productos').getPublicUrl(path).data.publicUrl;
-      setProductDirty();
-    };
+  let galleryUrls = normalizeImagenes(p);
+  if (im && !galleryUrls.length && im.value) galleryUrls = [im.value.trim()].filter(Boolean);
+
+  const galWrap = document.createElement('div');
+  galWrap.className = 'full';
+  galWrap.id = 'imgGalleryWrap';
+  galWrap.innerHTML = `
+    <label style="display:block;margin:8px 0 6px">Galería de imágenes</label>
+    <div class="muted" style="margin-bottom:8px">La primera es la portada (card y listados). Podés subir varias.</div>
+    <div id="imgGallery" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
+    <input type="file" id="imgMulti" accept="image/*" multiple style="margin-top:4px">
+    <input type="hidden" id="imagenesJson" value="">
+  `;
+  const fieldsEl = $('#fields');
+  if (im && fieldsEl) {
+    const parent = im.closest('.full') || im.parentElement;
+    if (parent && parent.parentElement) parent.after(galWrap);
+    else fieldsEl.appendChild(galWrap);
+  } else if (fieldsEl) {
+    fieldsEl.appendChild(galWrap);
   }
+
+  function syncGalleryHidden() {
+    const hid = document.getElementById('imagenesJson');
+    if (hid) hid.value = JSON.stringify(galleryUrls);
+    if (im) im.value = galleryUrls[0] || '';
+  }
+
+  function renderGallery() {
+    const box = document.getElementById('imgGallery');
+    if (!box) return;
+    box.innerHTML = galleryUrls.map((url, i) => `
+      <div style="width:88px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#f7f7f7;position:relative">
+        <img src="${esc(url)}" alt="" style="width:88px;height:88px;object-fit:contain;display:block" onerror="this.style.opacity=.3">
+        <div style="display:flex;gap:2px;padding:4px;flex-wrap:wrap">
+          <button type="button" class="btn small" data-gal-up="${i}" ${i===0?'disabled':''} title="Subir">↑</button>
+          <button type="button" class="btn small" data-gal-down="${i}" ${i===galleryUrls.length-1?'disabled':''} title="Bajar">↓</button>
+          <button type="button" class="btn small" data-gal-del="${i}" title="Quitar">×</button>
+        </div>
+        ${i===0?'<div style="font-size:10px;text-align:center;padding:0 4px 4px;font-weight:700;color:#087d34">Portada</div>':''}
+      </div>
+    `).join('') || '<span class="muted">Sin imágenes</span>';
+    box.querySelectorAll('[data-gal-del]').forEach(btn => {
+      btn.onclick = () => {
+        galleryUrls.splice(parseInt(btn.getAttribute('data-gal-del'),10), 1);
+        syncGalleryHidden(); renderGallery(); setProductDirty();
+      };
+    });
+    box.querySelectorAll('[data-gal-up]').forEach(btn => {
+      btn.onclick = () => {
+        const i = parseInt(btn.getAttribute('data-gal-up'),10);
+        if (i<=0) return;
+        const tmp = galleryUrls[i-1]; galleryUrls[i-1]=galleryUrls[i]; galleryUrls[i]=tmp;
+        syncGalleryHidden(); renderGallery(); setProductDirty();
+      };
+    });
+    box.querySelectorAll('[data-gal-down]').forEach(btn => {
+      btn.onclick = () => {
+        const i = parseInt(btn.getAttribute('data-gal-down'),10);
+        if (i>=galleryUrls.length-1) return;
+        const tmp = galleryUrls[i+1]; galleryUrls[i+1]=galleryUrls[i]; galleryUrls[i]=tmp;
+        syncGalleryHidden(); renderGallery(); setProductDirty();
+      };
+    });
+    syncGalleryHidden();
+  }
+  renderGallery();
+
+  const multi = document.getElementById('imgMulti');
+  if (multi) multi.onchange = async () => {
+    const files = Array.from(multi.files || []);
+    if (!files.length) return;
+    $('#ferr').textContent = '';
+    for (const f of files) {
+      try {
+        const path = Date.now() + '-' + f.name.replace(/[^\w.]+/g, '_');
+        const { error } = await sb.storage.from('productos').upload(path, f, { upsert: false });
+        if (error) throw error;
+        const url = sb.storage.from('productos').getPublicUrl(path).data.publicUrl;
+        galleryUrls.push(url);
+      } catch (err) {
+        $('#ferr').textContent = err.message || String(err);
+      }
+    }
+    multi.value = '';
+    syncGalleryHidden(); renderGallery(); setProductDirty();
+  };
+
   try {
     if (typeof $('#dlg').showModal === 'function') {
       $('#dlg').showModal();
@@ -1781,6 +1872,15 @@ $('#frm').onsubmit = async e => {
     const p = {};
     Object.keys(LBL).forEach(k => p[k] = f.get(k));
     for (let i = 1; i <= 5; i++) p['spec' + i] = f.get('spec' + i) || '';
+    try {
+      const rawGal = document.getElementById('imagenesJson')?.value || '[]';
+      const gal = JSON.parse(rawGal);
+      p.imagenes = Array.isArray(gal) ? gal.filter(Boolean) : [];
+      if (p.imagenes.length && !p.imagen) p.imagen = p.imagenes[0];
+      if (p.imagen && !p.imagenes.includes(String(p.imagen))) p.imagenes = [String(p.imagen), ...p.imagenes];
+    } catch (eGal) {
+      p.imagenes = p.imagen ? [String(p.imagen)] : [];
+    }
     p.extra1_label = f.get('extra1_label') || '';
     p.extra1_value = f.get('extra1_value') || '';
     p.extra2_label = f.get('extra2_label') || '';
@@ -2240,31 +2340,52 @@ $('#doUploadImages').onclick = async () => {
   let ok = 0, fail = 0;
   const logs = [];
 
+  // Agrupar por ID: 67.jpg, 67_2.jpg, 67-3.webp
+  const byId = {};
   for (const file of BULK_FILES) {
+    const base = file.name.replace(/\.[^/.]+$/, '').trim();
+    const m = base.match(/^(.+?)(?:[_-](\d+))?$/);
+    const id = m ? m[1] : base;
+    const slot = m && m[2] ? parseInt(m[2], 10) : 1;
+    if (!byId[id]) byId[id] = [];
+    byId[id].push({ file, slot });
+  }
+  for (const id of Object.keys(byId)) {
     try {
-      const id = file.name.replace(/\.[^/.]+$/, '').trim();
-      if (!id) throw new Error('Nombre inválido');
       const product = DATA.find(p => String(p.id) === String(id));
       if (!product) throw new Error('No existe producto ID "' + id + '"');
       if (!canEditProduct(product)) throw new Error('Sin permiso sobre ' + id);
 
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-      const path = id + '.' + ext;
-      const { error: upErr } = await sb.storage.from('productos').upload(path, file, { upsert: true });
-      if (upErr) throw upErr;
+      const items = byId[id].sort((a, b) => a.slot - b.slot);
+      let urls = normalizeImagenes(product);
 
-      const publicUrl = sb.storage.from('productos').getPublicUrl(path).data.publicUrl;
+      for (const { file, slot } of items) {
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const path = (slot <= 1 ? id : (id + '_' + slot)) + '.' + ext;
+        const { error: upErr } = await sb.storage.from('productos').upload(path, file, { upsert: true });
+        if (upErr) throw upErr;
+        const publicUrl = sb.storage.from('productos').getPublicUrl(path).data.publicUrl + '?t=' + Date.now();
+        if (slot <= 1) {
+          urls = [publicUrl, ...urls.filter((u, i) => i > 0)];
+        } else {
+          while (urls.length < slot) urls.push('');
+          urls[slot - 1] = publicUrl;
+          urls = urls.filter(Boolean);
+        }
+      }
+      urls = [...new Set(urls.filter(Boolean))];
+      const cover = urls[0] || '';
       const { error: updErr } = await sb.from('productos_borrador')
-        .update({ imagen: publicUrl, updated_at: new Date().toISOString() })
+        .update({ imagen: cover, imagenes: urls, updated_at: new Date().toISOString() })
         .eq('id', id);
       if (updErr) throw updErr;
 
-      ok++;
-      logs.push('✓ ' + id);
-      await logAudit('subir_imagen', id, file.name);
+      ok += items.length;
+      logs.push('✓ ' + id + ' (' + urls.length + ' foto(s))');
+      await logAudit('subir_imagen', id, items.map(x => x.file.name).join(', '));
     } catch (err) {
-      fail++;
-      logs.push('✗ ' + file.name + ': ' + (err.message || err));
+      fail += (byId[id] || []).length;
+      logs.push('✗ ' + id + ': ' + (err.message || err));
     }
   }
   await load();
