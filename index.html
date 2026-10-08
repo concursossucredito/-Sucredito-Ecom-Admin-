@@ -264,6 +264,14 @@ code{background:var(--surface-2);padding:2px 7px;border-radius:5px;font-size:12p
 .badge-vis.yes{background:var(--ok-soft);color:#065f46}
 .badge-vis.no{background:var(--danger-soft);color:#991b1b}
 .hint-reorder{font-size:12px;color:var(--muted);margin:0 0 10px}
+.metrics-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.metric-kpi{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px}
+.metric-kpi .label{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.metric-kpi .val{font-size:28px;font-weight:800;letter-spacing:-.03em;margin-top:4px;font-variant-numeric:tabular-nums}
+.metric-kpi .sub{font-size:12px;color:var(--muted-2);margin-top:2px}
+@media(max-width:900px){.metrics-kpis{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.metrics-kpis{grid-template-columns:1fr}}
+body.dark .metric-kpi{background:#0f172a;border-color:var(--border)}
 
 body.dark{
   --bg:#0b1220;
@@ -473,6 +481,7 @@ body.dark .cat-row.drag-over{background:#422006;outline-color:#fbbf24}
       <button data-t="imp" class="btn" id="tabImp">Importar Excel</button>
       <button data-t="imgs" class="btn">Subir imágenes</button>
       <button data-t="his" class="btn" id="tabHis">Historial</button>
+      <button data-t="metrics" class="btn" id="tabMetrics" style="display:none">Métricas</button>
       <button data-t="users" class="btn" id="tabUsers" style="display:none">Usuarios</button>
     </div>
 
@@ -572,6 +581,53 @@ body.dark .cat-row.drag-over{background:#422006;outline-color:#fbbf24}
           <tbody id="hrows"></tbody>
         </table>
       </div>
+    </section>
+
+    <section class="sec card" id="metrics">
+      <div class="bar">
+        <div>
+          <h3 style="margin:0">Métricas del catálogo</h3>
+          <div class="muted">Visitas a la web y clics por producto (últimos 30 días).</div>
+        </div>
+        <button class="btn" type="button" id="metricsReload">Actualizar</button>
+      </div>
+      <p class="no" id="metricsErr" style="display:none"></p>
+      <div class="metrics-kpis" id="metricsKpis">
+        <div class="metric-kpi"><div class="label">Visitas a la web</div><div class="val" id="mVisitas">—</div><div class="sub">páginas vistas</div></div>
+        <div class="metric-kpi"><div class="label">Visitantes (aprox.)</div><div class="val" id="mUnicos">—</div><div class="sub">sesiones distintas</div></div>
+        <div class="metric-kpi"><div class="label">Productos abiertos</div><div class="val" id="mProd">—</div><div class="sub">vistas de ficha</div></div>
+        <div class="metric-kpi"><div class="label">Consultas WhatsApp</div><div class="val" id="mWa">—</div><div class="sub">clics a WhatsApp</div></div>
+      </div>
+      <div class="g" style="margin-top:8px">
+        <div>
+          <h4 style="margin:0 0 8px;font-size:14px">Top productos más vistos</h4>
+          <div class="wrap">
+            <table>
+              <thead><tr><th>#</th><th>Producto</th><th>Vistas</th></tr></thead>
+              <tbody id="mTopProd"></tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <h4 style="margin:0 0 8px;font-size:14px">Top consultas WhatsApp</h4>
+          <div class="wrap">
+            <table>
+              <thead><tr><th>#</th><th>Producto</th><th>Clics</th></tr></thead>
+              <tbody id="mTopWa"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <h4 style="margin:0 0 8px;font-size:14px">Categorías más elegidas</h4>
+        <div class="wrap">
+          <table>
+            <thead><tr><th>#</th><th>Categoría</th><th>Clics</th></tr></thead>
+            <tbody id="mTopCat"></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:12px">Los datos salen de la tabla <code>eventos</code> en Supabase. Si ves error de permisos o “no existe”, ejecutá el SQL de creación de la tabla (te lo dejamos al final).</p>
     </section>
 
     <section class="sec card" id="users">
@@ -1033,6 +1089,8 @@ function applyRoleUI() {
   $('#tabCats').style.display = canManageCats() ? '' : 'none';
   $('#tabImp').style.display = canImport() ? '' : 'none';
   $('#tabHis').style.display = canSeeAllHistory() || isProveedor() ? '' : 'none';
+  const tabMetrics = document.getElementById('tabMetrics');
+  if (tabMetrics) tabMetrics.style.display = (isAdmin() || isEditor()) ? '' : 'none';
   const tabUsers = document.getElementById('tabUsers');
   if (tabUsers) tabUsers.style.display = isAdmin() ? '' : 'none';
 }
@@ -1294,8 +1352,85 @@ document.querySelectorAll('.tabs button').forEach(b => {
     document.querySelectorAll('.sec').forEach(s => s.classList.toggle('on', s.id === b.dataset.t));
     if (b.dataset.t === 'his') hist();
     if (b.dataset.t === 'users') loadUsers();
+    if (b.dataset.t === 'metrics') loadMetrics();
   };
 });
+
+/* ===================== MÉTRICAS ===================== */
+function rankCount(rows, pickName) {
+  const map = {};
+  rows.forEach(r => {
+    const k = pickName(r);
+    if (!k) return;
+    map[k] = (map[k] || 0) + 1;
+  });
+  return Object.keys(map)
+    .map(k => ({ name: k, n: map[k] }))
+    .sort((a, b) => b.n - a.n);
+}
+function renderRankTable(tbodyId, ranked, emptyMsg) {
+  const el = document.getElementById(tbodyId);
+  if (!el) return;
+  if (!ranked.length) {
+    el.innerHTML = `<tr><td colspan="3" class="empty">${emptyMsg || 'Sin datos aún'}</td></tr>`;
+    return;
+  }
+  el.innerHTML = ranked.slice(0, 15).map((r, i) =>
+    `<tr><td>${i + 1}</td><td style="white-space:normal">${esc(r.name)}</td><td><b>${r.n}</b></td></tr>`
+  ).join('');
+}
+async function loadMetrics() {
+  if (!(isAdmin() || isEditor())) return;
+  const errEl = $('#metricsErr');
+  if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+  try {
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+    const { data, error } = await sb
+      .from('eventos')
+      .select('categoria,accion,nombre,sesion,created_at')
+      .gte('created_at', since.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(8000);
+    if (error) throw error;
+    const rows = data || [];
+    const pageViews = rows.filter(r => r.categoria === 'Pagina' && (r.accion === 'vista' || r.accion === 'visita'));
+    const sessions = {};
+    pageViews.forEach(r => {
+      const s = r.sesion || ('ua-' + (r.nombre || ''));
+      sessions[s] = true;
+    });
+    // también contar visitas sin sesion por cada fila
+    const visitas = pageViews.length;
+    const unicos = Object.keys(sessions).length || (visitas ? '—' : 0);
+    const prodViews = rows.filter(r => r.categoria === 'Producto' && r.accion === 'vista');
+    const waProd = rows.filter(r => r.categoria === 'WhatsApp' && r.accion === 'clic_producto');
+    const waAll = rows.filter(r => r.categoria === 'WhatsApp');
+    const cats = rows.filter(r => r.categoria === 'Catálogo' && r.accion === 'categoría');
+
+    const set = (id, v) => { const n = document.getElementById(id); if (n) n.textContent = v; };
+    set('mVisitas', visitas);
+    set('mUnicos', unicos);
+    set('mProd', prodViews.length);
+    set('mWa', waAll.length);
+
+    renderRankTable('mTopProd', rankCount(prodViews, r => r.nombre), 'Todavía no hay vistas de producto');
+    renderRankTable('mTopWa', rankCount(waProd, r => r.nombre), 'Todavía no hay clics a WhatsApp');
+    renderRankTable('mTopCat', rankCount(cats, r => r.nombre || 'todos'), 'Todavía no hay clics de categoría');
+  } catch (e) {
+    if (errEl) {
+      errEl.style.display = 'block';
+      errEl.textContent = (e && e.message) ? e.message : String(e);
+    }
+    ['mVisitas','mUnicos','mProd','mWa'].forEach(id => {
+      const n = document.getElementById(id); if (n) n.textContent = '—';
+    });
+    renderRankTable('mTopProd', [], 'Error al cargar');
+    renderRankTable('mTopWa', [], 'Error al cargar');
+    renderRankTable('mTopCat', [], 'Error al cargar');
+  }
+}
+if ($('#metricsReload')) $('#metricsReload').onclick = () => loadMetrics();
 
 
 /* ===================== DRAG REORDER PRODUCTOS ===================== */
